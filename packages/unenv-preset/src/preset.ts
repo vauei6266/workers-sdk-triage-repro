@@ -82,6 +82,7 @@ export function getCloudflarePreset({
 	const processOverrides = getProcessOverrides(compat);
 	const v8Overrides = getV8Overrides(compat);
 	const ttyOverrides = getTtyOverrides(compat);
+	const readlineOverrides = getReadlineOverrides(compat);
 
 	// "dynamic" as they depend on the compatibility date and flags
 	const dynamicNativeModules = [
@@ -105,6 +106,7 @@ export function getCloudflarePreset({
 		...processOverrides.nativeModules,
 		...v8Overrides.nativeModules,
 		...ttyOverrides.nativeModules,
+		...readlineOverrides.nativeModules,
 	];
 
 	// "dynamic" as they depend on the compatibility date and flags
@@ -128,6 +130,7 @@ export function getCloudflarePreset({
 		...processOverrides.hybridModules,
 		...v8Overrides.hybridModules,
 		...ttyOverrides.hybridModules,
+		...readlineOverrides.hybridModules,
 	];
 
 	return {
@@ -971,6 +974,42 @@ function getTtyOverrides({
 	return enabled
 		? {
 				nativeModules: ["tty"],
+				hybridModules: [],
+			}
+		: {
+				nativeModules: [],
+				hybridModules: [],
+			};
+}
+
+/**
+ * Returns the overrides for `node:readline` and `node:readline/promises` (unenv or workerd)
+ *
+ * The native readline implementation:
+ * - is experimental and has no default enable date
+ * - can be enabled with the "enable_nodejs_readline_module" flag
+ * - can be disabled with the "disable_nodejs_readline_module" flag
+ */
+function getReadlineOverrides({
+	compatibilityFlags,
+}: {
+	compatibilityDate: string;
+	compatibilityFlags: string[];
+}): { nativeModules: string[]; hybridModules: string[] } {
+	const disabledByFlag = compatibilityFlags.includes(
+		"disable_nodejs_readline_module"
+	);
+
+	const enabledByFlag =
+		compatibilityFlags.includes("enable_nodejs_readline_module") &&
+		compatibilityFlags.includes("experimental");
+
+	const enabled = enabledByFlag && !disabledByFlag;
+
+	// When enabled, use the native `readline` and `readline/promises` modules from workerd
+	return enabled
+		? {
+				nativeModules: ["readline", "readline/promises"],
 				hybridModules: [],
 			}
 		: {
