@@ -4,4 +4,11 @@
 "@cloudflare/vitest-pool-workers": minor
 ---
 
-Make `experimental_readRawConfig` and `unstable_getMiniflareWorkerOptions` async
+Make the exported APIs from Wrangler `experimental_readRawConfig()`, `unstable_getMiniflareWorkerOptions()`, and `unstable_readConfig()` async.
+
+If you'd previously been relying on these unstable APIs, update the callsite to `await` the promise:
+
+```diff
+- const config = wrangler.unstable_readConfig()
++ const config = await wrangler.unstable_readConfig()
+```
