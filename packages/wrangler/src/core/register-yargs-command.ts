@@ -165,10 +165,10 @@ function createHandler(def: CommandDefinition, commandName: string) {
 						AUTOCREATE_RESOURCES: args.experimentalAutoCreate,
 					};
 
-			await run(experimentalFlags, () => {
+			await run(experimentalFlags, async () => {
 				const config =
 					def.behaviour?.provideConfig ?? true
-						? readConfig(args, {
+						? await readConfig(args, {
 								hideWarnings: !(def.behaviour?.printConfigWarnings ?? true),
 								useRedirectIfAvailable:
 									def.behaviour?.useConfigRedirectIfAvailable,
@@ -177,7 +177,7 @@ function createHandler(def: CommandDefinition, commandName: string) {
 
 				if (def.behaviour?.warnIfMultipleEnvsConfiguredButNoneSpecified) {
 					if (!("env" in args) && config.configPath) {
-						const { rawConfig } = experimental_readRawConfig(
+						const { rawConfig } = await experimental_readRawConfig(
 							{
 								config: config.configPath,
 							},
