@@ -82,6 +82,7 @@ export function getCloudflarePreset({
 	const streamWrapOverrides = getStreamWrapOverrides(compat);
 	const replOverrides = getReplOverrides(compat);
 	const processOverrides = getProcessOverrides(compat);
+	const workerThreadsOverrides = getWorkerThreadsOverrides(compat);
 
 	// "dynamic" as they depend on the compatibility date and flags
 	const dynamicNativeModules = [
@@ -103,6 +104,7 @@ export function getCloudflarePreset({
 		...streamWrapOverrides.nativeModules,
 		...replOverrides.nativeModules,
 		...processOverrides.nativeModules,
+		...workerThreadsOverrides.nativeModules,
 	];
 
 	// "dynamic" as they depend on the compatibility date and flags
@@ -124,6 +126,7 @@ export function getCloudflarePreset({
 		...streamWrapOverrides.hybridModules,
 		...replOverrides.hybridModules,
 		...processOverrides.hybridModules,
+		...workerThreadsOverrides.hybridModules,
 	];
 
 	return {
@@ -901,4 +904,41 @@ function hasFetchIterableFixes({
 		!adjustmentDisabledByFlag;
 
 	return adjustmentEnabled;
+}
+
+/**
+ * Returns the overrides for `node:worker_threads` (unenv or workerd)
+ *
+ * The native worker_threads implementation:
+ * - can be enabled with the "enable_nodejs_worker_threads_module" flag
+ * - can be disabled with the "disable_nodejs_worker_threads_module" flag
+ * - is experimental (no default enable date)
+ */
+function getWorkerThreadsOverrides({
+	compatibilityFlags,
+}: {
+	compatibilityDate: string;
+	compatibilityFlags: string[];
+}): { nativeModules: string[]; hybridModules: string[] } {
+	const disabledByFlag = compatibilityFlags.includes(
+		"disable_nodejs_worker_threads_module"
+	);
+
+	const enabledByFlag = compatibilityFlags.includes(
+		"enable_nodejs_worker_threads_module"
+	);
+
+	// worker_threads is experimental, no default enable date
+	const enabled = enabledByFlag && !disabledByFlag;
+
+	// When enabled, use the native `worker_threads` module from workerd
+	return enabled
+		? {
+				nativeModules: ["worker_threads"],
+				hybridModules: [],
+			}
+		: {
+				nativeModules: [],
+				hybridModules: [],
+			};
 }
