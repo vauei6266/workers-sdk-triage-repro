@@ -18,6 +18,8 @@ export default defineWorkersConfig({
 	},
 	resolve: {
 		// promjs has broken package.json (main points to lib/index.js but files are at root)
+		// This was reported 5 years ago and is still not fixed: https://github.com/weaveworks/promjs/issues/23
+		// TODO: find a more maintained alternative to promjs
 		alias: {
 			promjs: path.resolve(__dirname, "node_modules/promjs/index.js"),
 		},
