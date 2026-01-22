@@ -120,16 +120,24 @@ const parseRawConfigFile = (configPath: string): RawConfig => {
 	return {};
 };
 
-export const experimental_readRawConfig = async (
+export const experimental_readRawConfig = (
 	args: ReadConfigCommandArgs,
 	options: ReadConfigOptions = {}
-): Promise<{
-	rawConfig: RawConfig;
-	configPath: string | undefined;
-	userConfigPath: string | undefined;
-	deployConfigPath: string | undefined;
-	redirected: boolean;
-}> => {
+):
+	| {
+			rawConfig: RawConfig;
+			configPath: string | undefined;
+			userConfigPath: string | undefined;
+			deployConfigPath: string | undefined;
+			redirected: boolean;
+	  }
+	| Promise<{
+			rawConfig: RawConfig;
+			configPath: string | undefined;
+			userConfigPath: string | undefined;
+			deployConfigPath: string | undefined;
+			redirected: boolean;
+	  }> => {
 	// Load the configuration from disk if available
 	const { configPath, userConfigPath, deployConfigPath, redirected } =
 		resolveWranglerConfigPath(args, options);

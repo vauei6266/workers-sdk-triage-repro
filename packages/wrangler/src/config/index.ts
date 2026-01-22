@@ -49,19 +49,19 @@ export type ConfigBindingOptions = Pick<
 >;
 
 /**
- * Get the Wrangler configuration; read it from the give `configPath` if available.
+ * Convert the result of experimental_readRawConfig into a Config shape that can be used across the codebase
  */
-export async function readConfig(
+function convertRawConfigToConfig(
 	args: ReadConfigCommandArgs,
-	options: ReadConfigOptions = {}
-): Promise<Config> {
-	const {
+	options: ReadConfigOptions = {},
+	{
 		rawConfig,
 		configPath,
 		userConfigPath,
 		deployConfigPath,
 		redirected,
-	} = await experimental_readRawConfig(args, options);
+	}: Awaited<ReturnType<typeof experimental_readRawConfig>>
+): Config {
 	if (redirected) {
 		assert(configPath, "Redirected config found without a configPath");
 		assert(
@@ -92,6 +92,23 @@ export async function readConfig(
 	}
 
 	return config;
+}
+
+/**
+ * Get the Wrangler configuration; read it from the give `configPath` if available.
+ */
+export function readConfig(
+	args: ReadConfigCommandArgs,
+	options: ReadConfigOptions = {}
+): Config | Promise<Config> {
+	const configOrPromise = experimental_readRawConfig(args, options);
+	if ("then" in configOrPromise) {
+		return configOrPromise.then((raw) =>
+			convertRawConfigToConfig(args, options, raw)
+		);
+	} else {
+		return convertRawConfigToConfig(args, options, configOrPromise);
+	}
 }
 
 export async function readPagesConfig(
