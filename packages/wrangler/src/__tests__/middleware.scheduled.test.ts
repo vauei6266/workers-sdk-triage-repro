@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { startWorker as unstable_startWorker } from "../api/startDevWorker";
+import { startWorker } from "../api/startDevWorker";
 import { runInTempDir } from "./helpers/run-in-tmp";
 
 vi.unmock("child_process");
@@ -38,7 +38,7 @@ describe("run scheduled events with middleware", () => {
 		});
 
 		it("should not intercept when middleware is not enabled", async () => {
-			const worker = await unstable_startWorker({
+			const worker = await startWorker({
 				entrypoint: "index.js",
 				dev: {
 					server: { hostname: "127.0.0.1", port: 0 },
@@ -56,7 +56,7 @@ describe("run scheduled events with middleware", () => {
 		});
 
 		it("should intercept when middleware is enabled", async () => {
-			const worker = await unstable_startWorker({
+			const worker = await startWorker({
 				entrypoint: "index.js",
 				dev: {
 					server: { hostname: "127.0.0.1", port: 0 },
@@ -75,7 +75,7 @@ describe("run scheduled events with middleware", () => {
 		});
 
 		it("should not trigger scheduled event on wrong route", async () => {
-			const worker = await unstable_startWorker({
+			const worker = await startWorker({
 				entrypoint: "index.js",
 				dev: {
 					server: { hostname: "127.0.0.1", port: 0 },
@@ -94,7 +94,7 @@ describe("run scheduled events with middleware", () => {
 		});
 
 		it("should respond with 404 for favicons", async () => {
-			const worker = await unstable_startWorker({
+			const worker = await startWorker({
 				entrypoint: "only-scheduled.js",
 				dev: {
 					server: { hostname: "127.0.0.1", port: 0 },
@@ -113,7 +113,7 @@ describe("run scheduled events with middleware", () => {
 			await worker.dispose();
 		});
 		it("should not respond with 404 for favicons if user-worker has a response", async () => {
-			const worker = await unstable_startWorker({
+			const worker = await startWorker({
 				entrypoint: "index.js",
 				dev: {
 					server: { hostname: "127.0.0.1", port: 0 },
@@ -162,7 +162,7 @@ describe("run scheduled events with middleware", () => {
 		});
 
 		it("should not intercept when middleware is not enabled", async () => {
-			const worker = await unstable_startWorker({
+			const worker = await startWorker({
 				entrypoint: "index.js",
 				dev: {
 					server: { hostname: "127.0.0.1", port: 0 },
@@ -180,7 +180,7 @@ describe("run scheduled events with middleware", () => {
 		});
 
 		it("should intercept when middleware is enabled", async () => {
-			const worker = await unstable_startWorker({
+			const worker = await startWorker({
 				entrypoint: "index.js",
 				dev: {
 					server: { hostname: "127.0.0.1", port: 0 },
@@ -199,7 +199,7 @@ describe("run scheduled events with middleware", () => {
 		});
 
 		it("should not trigger scheduled event on wrong route", async () => {
-			const worker = await unstable_startWorker({
+			const worker = await startWorker({
 				entrypoint: "index.js",
 				dev: {
 					server: { hostname: "127.0.0.1", port: 0 },
@@ -218,7 +218,7 @@ describe("run scheduled events with middleware", () => {
 		});
 
 		it("should respond with 404 for favicons", async () => {
-			const worker = await unstable_startWorker({
+			const worker = await startWorker({
 				entrypoint: "only-scheduled.js",
 				dev: {
 					server: { hostname: "127.0.0.1", port: 0 },
@@ -237,7 +237,7 @@ describe("run scheduled events with middleware", () => {
 			await worker.dispose();
 		});
 		it("should not respond with 404 for favicons if user-worker has a response", async () => {
-			const worker = await unstable_startWorker({
+			const worker = await startWorker({
 				entrypoint: "index.js",
 				dev: {
 					server: { hostname: "127.0.0.1", port: 0 },

@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import dedent from "ts-dedent";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { startWorker as unstable_startWorker } from "../api/startDevWorker";
+import { startWorker } from "../api/startDevWorker";
 import { mockConsoleMethods } from "./helpers/mock-console";
 import { runInTempDir } from "./helpers/run-in-tmp";
 import { runWrangler } from "./helpers/run-wrangler";
@@ -52,7 +52,7 @@ describe("middleware", () => {
 			`;
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -86,7 +86,7 @@ describe("middleware", () => {
 
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -123,7 +123,7 @@ describe("middleware", () => {
 
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -156,7 +156,7 @@ describe("middleware", () => {
 			`;
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -187,7 +187,7 @@ describe("middleware", () => {
 			`;
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -218,7 +218,7 @@ describe("middleware", () => {
 
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -252,7 +252,7 @@ describe("middleware", () => {
 
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -289,7 +289,7 @@ describe("middleware", () => {
 			`;
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -317,7 +317,7 @@ describe("middleware", () => {
 			`;
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -349,7 +349,7 @@ describe("middleware", () => {
 			`;
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -383,7 +383,7 @@ describe("middleware", () => {
 			`;
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -415,7 +415,7 @@ describe("middleware", () => {
 			`;
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -460,7 +460,7 @@ describe("middleware", () => {
 			`;
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -487,7 +487,7 @@ describe("middleware", () => {
 			`;
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -512,7 +512,7 @@ describe("middleware", () => {
 			`;
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -541,7 +541,7 @@ describe("middleware", () => {
 			`;
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -573,7 +573,7 @@ describe("middleware", () => {
 			`;
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -605,7 +605,7 @@ describe("middleware", () => {
 			`;
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -638,7 +638,7 @@ describe("middleware", () => {
 			`;
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -670,7 +670,7 @@ describe("middleware", () => {
 			`;
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -703,7 +703,7 @@ describe("middleware", () => {
 			`;
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -731,7 +731,7 @@ describe("middleware", () => {
 			`;
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -764,7 +764,7 @@ describe("middleware", () => {
 			`;
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -797,7 +797,7 @@ describe("middleware", () => {
 			`;
 				fs.writeFileSync("index.js", scriptContent);
 
-				const worker = await unstable_startWorker({
+				const worker = await startWorker({
 					entrypoint: "index.js",
 					dev: {
 						server: { hostname: "127.0.0.1", port: 0 },
@@ -1058,7 +1058,7 @@ describe("middleware", () => {
 		`;
 			fs.writeFileSync("index.js", scriptContent);
 
-			const worker = await unstable_startWorker({
+			const worker = await startWorker({
 				entrypoint: "index.js",
 				dev: {
 					server: { hostname: "127.0.0.1", port: 0 },
@@ -1077,11 +1077,10 @@ describe("middleware", () => {
 			try {
 				await worker.ready;
 				const url = await worker.url;
-				// Note: worker.fetch() doesn't work correctly with paths when
+				// TODO(startWorker): worker.fetch() doesn't work correctly with paths when
 				// EXPERIMENTAL_MIDDLEWARE=true is set. The request URL pathname gets
 				// lost, causing the worker to not match routes like "/setup".
 				// We use native fetch() with the worker URL as a workaround.
-				// See: https://github.com/cloudflare/workers-sdk/issues/XXXX
 				let res = await fetch(new URL("/setup", url).href);
 				expect(res.status).toBe(204);
 				res = await fetch(new URL("/__scheduled", url).href);
