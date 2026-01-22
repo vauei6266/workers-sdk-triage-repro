@@ -28,9 +28,9 @@ describe("readConfig()", () => {
 		writeWranglerConfig({
 			main: "index.py",
 		});
-		await expect(
+		await expect(() =>
 			readConfig({ config: "wrangler.toml" })
-		).rejects.toMatchInlineSnapshot(
+		).toThrowErrorMatchingInlineSnapshot(
 			`[Error: The \`python_workers\` compatibility flag is required to use Python.]`
 		);
 	});
@@ -137,7 +137,7 @@ compatibility_date = "2022-01-12"`;
 		const configContent = Buffer.from('{"name": "test"}', "utf-8");
 		fs.writeFileSync("wrangler.json", Buffer.concat([bomBytes, configContent]));
 
-		await expect(readConfig({ config: "wrangler.json" })).rejects.toThrow(
+		await expect(() => readConfig({ config: "wrangler.json" })).toThrow(
 			"Configuration file contains UTF-16 BE byte order marker"
 		);
 	});
@@ -147,7 +147,7 @@ compatibility_date = "2022-01-12"`;
 		const configContent = Buffer.from('{"name": "test"}', "utf-8");
 		fs.writeFileSync("wrangler.json", Buffer.concat([bomBytes, configContent]));
 
-		await expect(readConfig({ config: "wrangler.json" })).rejects.toThrow(
+		await expect(() => readConfig({ config: "wrangler.json" })).toThrow(
 			"Configuration file contains UTF-16 LE byte order marker"
 		);
 	});
@@ -157,7 +157,7 @@ compatibility_date = "2022-01-12"`;
 		const configContent = Buffer.from('{"name": "test"}', "utf-8");
 		fs.writeFileSync("wrangler.json", Buffer.concat([bomBytes, configContent]));
 
-		await expect(readConfig({ config: "wrangler.json" })).rejects.toThrow(
+		await expect(() => readConfig({ config: "wrangler.json" })).toThrow(
 			"Configuration file contains UTF-32 BE byte order marker"
 		);
 	});
@@ -167,7 +167,7 @@ compatibility_date = "2022-01-12"`;
 		const configContent = Buffer.from('{"name": "test"}', "utf-8");
 		fs.writeFileSync("wrangler.json", Buffer.concat([bomBytes, configContent]));
 
-		await expect(readConfig({ config: "wrangler.json" })).rejects.toThrow(
+		await expect(() => readConfig({ config: "wrangler.json" })).toThrow(
 			"Configuration file contains UTF-32 LE byte order marker"
 		);
 	});
