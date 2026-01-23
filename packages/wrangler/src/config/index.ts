@@ -3,6 +3,7 @@ import path from "node:path";
 import {
 	configFileName,
 	experimental_readRawConfig,
+	experimental_readRawConfigAsync,
 	FatalError,
 	isPagesConfig,
 	normalizeAndValidateConfig,
@@ -16,6 +17,7 @@ import type {
 	Config,
 	NormalizeAndValidateConfigArgs,
 	RawConfig,
+	ReadRawConfigResult,
 	ResolveConfigPathOptions,
 } from "@cloudflare/workers-utils";
 
@@ -60,7 +62,7 @@ function convertRawConfigToConfig(
 		userConfigPath,
 		deployConfigPath,
 		redirected,
-	}: Awaited<ReturnType<typeof experimental_readRawConfig>>
+	}: ReturnType<typeof experimental_readRawConfig>
 ): Config {
 	if (redirected) {
 		assert(configPath, "Redirected config found without a configPath");
@@ -95,28 +97,39 @@ function convertRawConfigToConfig(
 }
 
 /**
- * Get the Wrangler configuration; read it from the give `configPath` if available.
+ * Synchronously get the Wrangler configuration from a data file (toml, json, jsonc).
+ *
+ * This function only supports data file formats. For code-based config files,
+ * use `unstable_readConfigAsync` instead.
  */
 export function readConfig(
 	args: ReadConfigCommandArgs,
 	options: ReadConfigOptions = {}
-): Config | Promise<Config> {
-	const configOrPromise = experimental_readRawConfig(args, options);
-	if ("then" in configOrPromise) {
-		return configOrPromise.then((raw) =>
-			convertRawConfigToConfig(args, options, raw)
-		);
-	} else {
-		return convertRawConfigToConfig(args, options, configOrPromise);
-	}
+): Config {
+	const raw = experimental_readRawConfig(args, options);
+	return convertRawConfigToConfig(args, options, raw);
 }
 
-export async function readPagesConfig(
+/**
+ * Asynchronously get the Wrangler configuration.
+ *
+ * This function supports both data file formats (toml, json, jsonc) and
+ * will support code-based config files (ts, js, mjs) in the future.
+ *
+ * In Wrangler v5, this will become the default `readConfig`.
+ */
+export async function readConfigAsync(
 	args: ReadConfigCommandArgs,
 	options: ReadConfigOptions = {}
-): Promise<
-	Omit<Config, "pages_build_output_dir"> & { pages_build_output_dir: string }
-> {
+): Promise<Config> {
+	const raw = await experimental_readRawConfigAsync(args, options);
+	return convertRawConfigToConfig(args, options, raw);
+}
+
+export function readPagesConfig(
+	args: ReadConfigCommandArgs,
+	options: ReadConfigOptions = {}
+): Omit<Config, "pages_build_output_dir"> & { pages_build_output_dir: string } {
 	let rawConfig: RawConfig;
 	let configPath: string | undefined;
 	let userConfigPath: string | undefined;
@@ -124,7 +137,7 @@ export async function readPagesConfig(
 	let deployConfigPath: string | undefined;
 	try {
 		({ rawConfig, configPath, userConfigPath, deployConfigPath, redirected } =
-			await experimental_readRawConfig(args, options));
+			experimental_readRawConfig(args, options));
 		if (redirected) {
 			assert(configPath, "Redirected config found without a configPath");
 			assert(
