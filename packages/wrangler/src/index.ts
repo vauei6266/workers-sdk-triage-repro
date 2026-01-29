@@ -5,6 +5,7 @@ import { UserError as ContainersUserError } from "@cloudflare/containers-shared/
 import {
 	CommandLineArgsError,
 	experimental_readRawConfig,
+	experimental_readRawConfigAsync,
 	UserError,
 } from "@cloudflare/workers-utils";
 import chalk from "chalk";
@@ -1778,7 +1779,7 @@ export async function main(argv: string[]): Promise<void> {
 		// key to fetch) or flags
 
 		try {
-			const { rawConfig, configPath } = await experimental_readRawConfig(args);
+			const { rawConfig, configPath } = await experimental_readRawConfigAsync(args);
 			dispatcher = getMetricsDispatcher({
 				sendMetrics: rawConfig.send_metrics,
 				hasAssets: !!rawConfig.assets?.directory,
