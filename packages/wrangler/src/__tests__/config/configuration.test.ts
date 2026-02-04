@@ -1,8 +1,8 @@
 import * as fs from "node:fs";
-import { experimental_readRawConfig } from "@cloudflare/workers-utils";
+import { experimental_readRawConfigAsync } from "@cloudflare/workers-utils";
 import { writeWranglerConfig } from "@cloudflare/workers-utils/test-helpers";
 import { describe, expect, it } from "vitest";
-import { readConfig } from "../../config";
+import { readConfigAsync } from "../../config";
 import { runInTempDir } from "../helpers/run-in-tmp";
 
 describe("readConfig()", () => {
@@ -12,7 +12,7 @@ describe("readConfig()", () => {
 			main: "index.py",
 			compatibility_flags: ["python_workers"],
 		});
-		const config = await readConfig({ config: "wrangler.toml" });
+		const config = await readConfigAsync({ config: "wrangler.toml" });
 		expect(config.rules).toMatchInlineSnapshot(`
 			Array [
 			  Object {
@@ -29,7 +29,7 @@ describe("readConfig()", () => {
 			main: "index.py",
 		});
 		await expect(() =>
-			readConfig({ config: "wrangler.toml" })
+			readConfigAsync({ config: "wrangler.toml" })
 		).toThrowErrorMatchingInlineSnapshot(
 			`[Error: The \`python_workers\` compatibility flag is required to use Python.]`
 		);
@@ -48,7 +48,7 @@ describe("experimental_readRawConfig()", () => {
 					`../folder/config.${configType}`
 				);
 
-				const result = await experimental_readRawConfig({
+				const result = await experimental_readRawConfigAsync({
 					config: `../folder/config.${configType}`,
 				});
 				expect(result.rawConfig).toEqual(
@@ -71,7 +71,7 @@ describe("experimental_readRawConfig()", () => {
 					`../folder/wrangler.${configType}`
 				);
 
-				let result = await experimental_readRawConfig({
+				let result = await experimental_readRawConfigAsync({
 					script: "./path/to/index.js",
 				});
 				expect(result.rawConfig).toEqual(
@@ -80,7 +80,7 @@ describe("experimental_readRawConfig()", () => {
 					})
 				);
 
-				result = await experimental_readRawConfig({
+				result = await experimental_readRawConfigAsync({
 					script: "../folder/index.js",
 				});
 				expect(result.rawConfig).toEqual(
@@ -108,7 +108,7 @@ compatibility_date = "2022-01-12"`;
 			])
 		);
 
-		const config = await readConfig({ config: "wrangler.toml" });
+		const config = await readConfigAsync({ config: "wrangler.toml" });
 		expect(config.name).toBe("test-worker");
 		expect(config.compatibility_date).toBe("2022-01-12");
 	});
@@ -127,7 +127,7 @@ compatibility_date = "2022-01-12"`;
 			])
 		);
 
-		const config = await readConfig({ config: "wrangler.json" });
+		const config = await readConfigAsync({ config: "wrangler.json" });
 		expect(config.name).toBe("test-worker");
 		expect(config.compatibility_date).toBe("2022-01-12");
 	});
@@ -175,7 +175,7 @@ compatibility_date = "2022-01-12"`;
 	it("should handle files without BOM normally", async () => {
 		writeWranglerConfig({ name: "no-bom-test" });
 
-		const config = await readConfig({ config: "wrangler.toml" });
+		const config = await readConfigAsync({ config: "wrangler.toml" });
 		expect(config.name).toBe("no-bom-test");
 	});
 });

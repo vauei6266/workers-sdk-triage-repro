@@ -11,7 +11,7 @@ import chalk from "chalk";
 import { getAssetsOptions, validateAssetsArgsAndConfig } from "../assets";
 import { getDetailsForAutoConfig } from "../autoconfig/details";
 import { runAutoConfig } from "../autoconfig/run";
-import { readConfig } from "../config";
+import { readConfigAsync } from "../config";
 import { createCommand } from "../core/create-command";
 import { getEntry } from "../deployment-bundle/entry";
 import { confirm, prompt } from "../dialogs";
@@ -292,7 +292,7 @@ export const deployCommand = createCommand({
 				autoConfigSummary = await runAutoConfig(details);
 
 				// If autoconfig worked, there should now be a new config file, and so we need to read config again
-				config = await readConfig(args, {
+				config = await readConfigAsync(args, {
 					hideWarnings: false,
 					useRedirectIfAvailable: true,
 				});

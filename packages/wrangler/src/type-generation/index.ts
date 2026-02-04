@@ -4,7 +4,7 @@ import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import {
 	CommandLineArgsError,
 	configFileName,
-	experimental_readRawConfig,
+	experimental_readRawConfigAsync,
 	FatalError,
 	parseJSONC,
 	UserError,
@@ -12,7 +12,7 @@ import {
 import chalk from "chalk";
 import { findUpSync } from "find-up";
 import { getNodeCompat } from "miniflare";
-import { readConfig } from "../config";
+import { readConfigAsync } from "../config";
 import { createCommand } from "../core/create-command";
 import { getEntry } from "../deployment-bundle/entry";
 import { getDurableObjectClassNameToUseSQLiteMap } from "../dev/class-names-sqlite";
@@ -138,12 +138,12 @@ export const typesCommand = createCommand({
 		let config: Config;
 		const secondaryConfigs: Config[] = [];
 		if (Array.isArray(args.config)) {
-			config = await readConfig({ ...args, config: args.config[0] });
+			config = await readConfigAsync({ ...args, config: args.config[0] });
 			for (const configPath of args.config.slice(1)) {
-				secondaryConfigs.push(await readConfig({ config: configPath }));
+				secondaryConfigs.push(await readConfigAsync({ config: configPath }));
 			}
 		} else {
-			config = await readConfig(args);
+			config = await readConfigAsync(args);
 		}
 
 		const { envInterface, path: outputPath } = args;
@@ -378,7 +378,7 @@ export async function generateEnvTypes(
 		);
 	}
 
-	const { rawConfig } = await experimental_readRawConfig(collectionArgs);
+	const { rawConfig } = await experimental_readRawConfigAsync(collectionArgs);
 	const hasEnvironments =
 		!!rawConfig.env && Object.keys(rawConfig.env).length > 0;
 
@@ -720,7 +720,7 @@ async function generatePerEnvironmentTypes(
 	secrets: Record<string, string> = {},
 	log = true
 ): Promise<{ envHeader?: string; envTypes?: string }> {
-	const { rawConfig } = await experimental_readRawConfig(collectionArgs);
+	const { rawConfig } = await experimental_readRawConfigAsync(collectionArgs);
 	const envNames = Object.keys(rawConfig.env ?? {});
 
 	validateEnvInterfaceNames(envNames);
@@ -1347,7 +1347,7 @@ async function collectAllVars(
 		});
 	}
 
-	const { rawConfig } = await experimental_readRawConfig(args);
+	const { rawConfig } = await experimental_readRawConfigAsync(args);
 
 	if (args.env) {
 		const envConfig = getEnvConfig(args.env, rawConfig);
@@ -1810,7 +1810,7 @@ async function collectCoreBindings(
 		}
 	}
 
-	const { rawConfig } = await experimental_readRawConfig(args);
+	const { rawConfig } = await experimental_readRawConfigAsync(args);
 
 	if (args.env) {
 		const envConfig = getEnvConfig(args.env, rawConfig);
@@ -1884,7 +1884,7 @@ async function collectAllDurableObjects(
 		}
 	}
 
-	const { rawConfig } = await experimental_readRawConfig(args);
+	const { rawConfig } = await experimental_readRawConfigAsync(args);
 
 	if (args.env) {
 		const envConfig = getEnvConfig(args.env, rawConfig);
@@ -1958,7 +1958,7 @@ async function collectAllServices(
 		}
 	}
 
-	const { rawConfig } = await experimental_readRawConfig(args);
+	const { rawConfig } = await experimental_readRawConfigAsync(args);
 
 	if (args.env) {
 		const envConfig = getEnvConfig(args.env, rawConfig);
@@ -2035,7 +2035,7 @@ async function collectAllWorkflows(
 		}
 	}
 
-	const { rawConfig } = await experimental_readRawConfig(args);
+	const { rawConfig } = await experimental_readRawConfigAsync(args);
 
 	if (args.env) {
 		const envConfig = getEnvConfig(args.env, rawConfig);
@@ -2104,7 +2104,7 @@ async function collectAllUnsafeBindings(
 		}
 	}
 
-	const { rawConfig } = await experimental_readRawConfig(args);
+	const { rawConfig } = await experimental_readRawConfigAsync(args);
 
 	if (args.env) {
 		const envConfig = getEnvConfig(args.env, rawConfig);
@@ -2175,7 +2175,7 @@ async function collectVarsPerEnvironment(
 		);
 	}
 
-	const { rawConfig } = await experimental_readRawConfig(args);
+	const { rawConfig } = await experimental_readRawConfigAsync(args);
 
 	// Collect top-level vars
 	const topLevelVars = collectVars(rawConfig.vars);
@@ -2636,7 +2636,7 @@ async function collectCoreBindingsPerEnvironment(
 		return bindings;
 	}
 
-	const { rawConfig } = await experimental_readRawConfig(args);
+	const { rawConfig } = await experimental_readRawConfigAsync(args);
 
 	const topLevelBindings = collectEnvironmentBindings(
 		rawConfig,
@@ -2720,7 +2720,7 @@ async function collectDurableObjectsPerEnvironment(
 		return durableObjects;
 	}
 
-	const { rawConfig } = await experimental_readRawConfig(args);
+	const { rawConfig } = await experimental_readRawConfigAsync(args);
 
 	const topLevelDOs = collectEnvironmentDOs(rawConfig, TOP_LEVEL_ENV_NAME);
 	if (topLevelDOs.length > 0) {
@@ -2805,7 +2805,7 @@ async function collectServicesPerEnvironment(
 		return services;
 	}
 
-	const { rawConfig } = await experimental_readRawConfig(args);
+	const { rawConfig } = await experimental_readRawConfigAsync(args);
 
 	const topLevelServices = collectEnvironmentServices(
 		rawConfig,
@@ -2898,7 +2898,7 @@ async function collectWorkflowsPerEnvironment(
 		return workflows;
 	}
 
-	const { rawConfig } = await experimental_readRawConfig(args);
+	const { rawConfig } = await experimental_readRawConfigAsync(args);
 
 	const topLevelWorkflows = collectEnvironmentWorkflows(
 		rawConfig,
@@ -2981,7 +2981,7 @@ async function collectUnsafeBindingsPerEnvironment(
 		return unsafeBindings;
 	}
 
-	const { rawConfig } = await experimental_readRawConfig(args);
+	const { rawConfig } = await experimental_readRawConfigAsync(args);
 
 	const topLevelUnsafe = collectEnvironmentUnsafe(
 		rawConfig,
