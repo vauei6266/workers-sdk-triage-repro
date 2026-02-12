@@ -725,6 +725,21 @@ function getWorkerRoutes(
 	return allRoutes;
 }
 
+// Hostname aliases must be valid subdomain components: lowercase alphanumeric,
+// hyphens, and underscores, 1-63 chars, not starting/ending with hyphen or underscore.
+const ALIAS_RE = /^[a-z0-9]([a-z0-9_-]{0,61}[a-z0-9])?$/;
+
+function validateAlias(alias: string, context: string): void {
+	if (!ALIAS_RE.test(alias)) {
+		throw new MiniflareCoreError(
+			"ERR_VALIDATION",
+			`Invalid hostname alias "${alias}" for ${context}. ` +
+				`Aliases must contain only lowercase alphanumeric characters, hyphens, and underscores, ` +
+				`must not start or end with a hyphen or underscore, and must be 1-63 characters long.`
+		);
+	}
+}
+
 function getEntrypointRouting(
 	allWorkerOpts: PluginWorkerOptions[]
 ): EntrypointRoutingConfig | undefined {
@@ -738,14 +753,33 @@ function getEntrypointRouting(
 		}
 
 		const workerName = workerOpts.core.name ?? "";
-		// Normalize worker name for hostname matching (lowercase)
 		const normalizedWorkerName = workerName.toLowerCase();
-		// User-facing API is exportName -> alias, but the entry worker
-		// needs alias -> exportName for O(1) hostname lookup. Invert here.
+		validateAlias(normalizedWorkerName, `worker "${workerName}"`);
+
+		// Validate aliases, check for collisions, and invert to
+		// alias -> exportName for the entry worker's O(1) hostname lookup.
 		const entrypoints: Record<string, string> = {};
-		for (const [exportName, alias] of Object.entries(entrypointRouting)) {
+		const seenAliases = new Map<string, string>();
+
+		for (const [exportName, rawAlias] of Object.entries(entrypointRouting)) {
+			const alias = rawAlias.toLowerCase();
+			validateAlias(
+				alias,
+				`entrypoint "${exportName}" of worker "${workerName}"`
+			);
+
+			const existing = seenAliases.get(alias);
+			if (existing !== undefined) {
+				throw new MiniflareCoreError(
+					"ERR_VALIDATION",
+					`Alias collision in worker "${workerName}": ` +
+						`entrypoints "${existing}" and "${exportName}" both map to alias "${alias}".`
+				);
+			}
+			seenAliases.set(alias, exportName);
 			entrypoints[alias] = exportName;
 		}
+
 		workers[normalizedWorkerName] = {
 			name: workerName,
 			entrypoints,
