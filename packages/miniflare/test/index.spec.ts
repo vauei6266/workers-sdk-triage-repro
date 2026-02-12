@@ -939,49 +939,11 @@ test("Miniflare: service binding to named entrypoint that implements a method re
 	expect(rpcTarget.id).toEqual("test-id");
 });
 
-test("Miniflare: entrypointRouting to worker default entrypoint", async ({
+test("Miniflare: entrypointRouting single worker uses {entrypoint}.localhost", async ({
 	expect,
 }) => {
 	const mf = new Miniflare({
 		workers: [
-			{
-				name: "main",
-				modules: true,
-				script: `export default { fetch() { return new Response("main"); } }`,
-			},
-			{
-				name: "my-api",
-				modules: true,
-				entrypointRouting: {},
-				script: `export default { fetch() { return new Response("my-api:default"); } }`,
-			},
-		],
-	});
-	useDispose(mf);
-
-	// Worker-only hostname routes to my-api's default entrypoint
-	let res = await mf.dispatchFetch("http://my-api.localhost/");
-	expect(await res.text()).toBe("my-api:default");
-
-	// Unknown hostname falls through to fallback (first worker)
-	res = await mf.dispatchFetch("http://unknown.localhost/");
-	expect(await res.text()).toBe("main");
-
-	// No subdomain falls through to fallback
-	res = await mf.dispatchFetch("http://localhost/");
-	expect(await res.text()).toBe("main");
-});
-
-test("Miniflare: entrypointRouting to named entrypoints", async ({
-	expect,
-}) => {
-	const mf = new Miniflare({
-		workers: [
-			{
-				name: "main",
-				modules: true,
-				script: `export default { fetch() { return new Response("main"); } }`,
-			},
 			{
 				name: "my-api",
 				modules: true,
@@ -1006,20 +968,50 @@ test("Miniflare: entrypointRouting to named entrypoints", async ({
 	});
 	useDispose(mf);
 
-	// {entrypoint}.{worker}.localhost routes to named entrypoint
-	let res = await mf.dispatchFetch("http://greet.my-api.localhost/");
+	// Single worker: {entrypoint}.localhost routes to named entrypoint
+	let res = await mf.dispatchFetch("http://greet.localhost/");
 	expect(await res.text()).toBe("hello from greet");
 
-	res = await mf.dispatchFetch("http://math.my-api.localhost/");
+	res = await mf.dispatchFetch("http://math.localhost/");
 	expect(await res.text()).toBe("hello from math");
 
-	// Worker-only hostname still routes to default
-	res = await mf.dispatchFetch("http://my-api.localhost/");
+	// Plain localhost falls through to default entrypoint
+	res = await mf.dispatchFetch("http://localhost/");
 	expect(await res.text()).toBe("my-api:default");
+});
 
-	// Unknown entrypoint on known worker falls through to fallback
-	res = await mf.dispatchFetch("http://nonexistent.my-api.localhost/");
-	expect(await res.text()).toBe("main");
+test("Miniflare: entrypointRouting single worker returns 404 for unknown entrypoint", async ({
+	expect,
+}) => {
+	const mf = new Miniflare({
+		workers: [
+			{
+				name: "my-api",
+				modules: true,
+				entrypointRouting: {
+					greet: "GreetEntrypoint",
+				},
+				script: `
+					import { WorkerEntrypoint } from "cloudflare:workers";
+					export class GreetEntrypoint extends WorkerEntrypoint {
+						fetch(request) { return new Response("hello from greet"); }
+					}
+					export default { fetch() { return new Response("my-api:default"); } }
+				`,
+			},
+		],
+	});
+	useDispose(mf);
+
+	// Unknown entrypoint returns 404
+	let res = await mf.dispatchFetch("http://unknown.localhost/");
+	expect(res.status).toBe(404);
+	await res.arrayBuffer();
+
+	// Multi-level subdomains are not supported in single worker mode
+	res = await mf.dispatchFetch("http://greet.my-api.localhost/");
+	expect(res.status).toBe(404);
+	await res.arrayBuffer();
 });
 
 test("Miniflare: entrypointRouting ROUTE_OVERRIDE takes priority", async ({
@@ -1049,7 +1041,7 @@ test("Miniflare: entrypointRouting ROUTE_OVERRIDE takes priority", async ({
 	expect(await res.text()).toBe("main");
 });
 
-test("Miniflare: entrypointRouting with multiple workers", async ({
+test("Miniflare: entrypointRouting multi worker uses {worker}.localhost and {entrypoint}.{worker}.localhost", async ({
 	expect,
 }) => {
 	const mf = new Miniflare({
@@ -1083,18 +1075,64 @@ test("Miniflare: entrypointRouting with multiple workers", async ({
 	});
 	useDispose(mf);
 
+	// {worker}.localhost routes to worker's default entrypoint
 	let res = await mf.dispatchFetch("http://api.localhost/");
 	expect(await res.text()).toBe("api:default");
 
+	// {entrypoint}.{worker}.localhost routes to named entrypoint
 	res = await mf.dispatchFetch("http://users.api.localhost/");
 	expect(await res.text()).toBe("api:users");
 
 	res = await mf.dispatchFetch("http://admin.localhost/");
 	expect(await res.text()).toBe("admin:default");
 
-	// Too many subdomain levels ignored, falls through to fallback
-	res = await mf.dispatchFetch("http://a.b.c.localhost/");
+	// Plain localhost falls through to fallback (first worker)
+	res = await mf.dispatchFetch("http://localhost/");
 	expect(await res.text()).toBe("main");
+});
+
+test("Miniflare: entrypointRouting multi worker returns 404 for unknown worker or entrypoint", async ({
+	expect,
+}) => {
+	const mf = new Miniflare({
+		workers: [
+			{
+				name: "main",
+				modules: true,
+				script: `export default { fetch() { return new Response("main"); } }`,
+			},
+			{
+				name: "api",
+				modules: true,
+				entrypointRouting: {
+					users: "UsersEntrypoint",
+				},
+				script: `
+					import { WorkerEntrypoint } from "cloudflare:workers";
+					export class UsersEntrypoint extends WorkerEntrypoint {
+						fetch(request) { return new Response("api:users"); }
+					}
+					export default { fetch() { return new Response("api:default"); } }
+				`,
+			},
+		],
+	});
+	useDispose(mf);
+
+	// Unknown worker returns 404
+	let res = await mf.dispatchFetch("http://unknown.localhost/");
+	expect(res.status).toBe(404);
+	await res.arrayBuffer();
+
+	// Unknown entrypoint on known worker returns 404
+	res = await mf.dispatchFetch("http://nonexistent.api.localhost/");
+	expect(res.status).toBe(404);
+	await res.arrayBuffer();
+
+	// Too many subdomain levels returns 404
+	res = await mf.dispatchFetch("http://a.b.c.localhost/");
+	expect(res.status).toBe(404);
+	await res.arrayBuffer();
 });
 
 test("Miniflare: tail consumer called", async ({ expect }) => {
