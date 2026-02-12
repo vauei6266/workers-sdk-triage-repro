@@ -164,6 +164,8 @@ const CoreOptionsSchemaInput = z.intersection(
 		unsafeEphemeralDurableObjects: z.boolean().optional(),
 		unsafeDirectSockets: UnsafeDirectSocketSchema.array().optional(),
 
+		entrypointRouting: z.record(z.string()).optional(),
+
 		unsafeEvalBinding: z.string().optional(),
 		unsafeUseModuleFallbackService: z.boolean().optional(),
 
@@ -958,9 +960,20 @@ export const CORE_PLUGIN: Plugin<
 	},
 };
 
+export interface EntrypointRoutingConfig {
+	workers: Record<
+		string,
+		{
+			name: string;
+			entrypoints: Record<string, string>;
+		}
+	>;
+}
+
 export interface GlobalServicesOptions {
 	sharedOptions: z.infer<typeof CoreSharedOptionsSchema>;
 	allWorkerRoutes: Map<string, string[]>;
+	allEntrypointRouting: EntrypointRoutingConfig | undefined;
 	fallbackWorkerName: string | undefined;
 	loopbackPort: number;
 	log: Log;
@@ -970,6 +983,7 @@ export interface GlobalServicesOptions {
 export function getGlobalServices({
 	sharedOptions,
 	allWorkerRoutes,
+	allEntrypointRouting,
 	fallbackWorkerName,
 	loopbackPort,
 	log,
@@ -1016,6 +1030,24 @@ export function getGlobalServices({
 		// Add `proxyBindings` here, they'll be added to the `ProxyServer` `env`
 		...proxyBindings,
 	];
+	if (allEntrypointRouting) {
+		serviceEntryBindings.push({
+			name: CoreBindings.JSON_HOSTNAME_ROUTING,
+			json: JSON.stringify(allEntrypointRouting),
+		});
+		// Create entrypoint-qualified service bindings for each worker/entrypoint pair
+		for (const workerConfig of Object.values(allEntrypointRouting.workers)) {
+			for (const entrypointName of Object.values(workerConfig.entrypoints)) {
+				serviceEntryBindings.push({
+					name: `${CoreBindings.SERVICE_USER_ENTRYPOINT_PREFIX}${workerConfig.name}:${entrypointName}`,
+					service: {
+						name: getUserServiceName(workerConfig.name),
+						entrypoint: entrypointName,
+					},
+				});
+			}
+		}
+	}
 	if (sharedOptions.unsafeLocalExplorer) {
 		serviceEntryBindings.push({
 			name: CoreBindings.SERVICE_LOCAL_EXPLORER,

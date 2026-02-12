@@ -939,6 +939,164 @@ test("Miniflare: service binding to named entrypoint that implements a method re
 	expect(rpcTarget.id).toEqual("test-id");
 });
 
+test("Miniflare: entrypointRouting to worker default entrypoint", async ({
+	expect,
+}) => {
+	const mf = new Miniflare({
+		workers: [
+			{
+				name: "main",
+				modules: true,
+				script: `export default { fetch() { return new Response("main"); } }`,
+			},
+			{
+				name: "my-api",
+				modules: true,
+				entrypointRouting: {},
+				script: `export default { fetch() { return new Response("my-api:default"); } }`,
+			},
+		],
+	});
+	useDispose(mf);
+
+	// Worker-only hostname routes to my-api's default entrypoint
+	let res = await mf.dispatchFetch("http://my-api.localhost/");
+	expect(await res.text()).toBe("my-api:default");
+
+	// Unknown hostname falls through to fallback (first worker)
+	res = await mf.dispatchFetch("http://unknown.localhost/");
+	expect(await res.text()).toBe("main");
+
+	// No subdomain falls through to fallback
+	res = await mf.dispatchFetch("http://localhost/");
+	expect(await res.text()).toBe("main");
+});
+
+test("Miniflare: entrypointRouting to named entrypoints", async ({
+	expect,
+}) => {
+	const mf = new Miniflare({
+		workers: [
+			{
+				name: "main",
+				modules: true,
+				script: `export default { fetch() { return new Response("main"); } }`,
+			},
+			{
+				name: "my-api",
+				modules: true,
+				entrypointRouting: {
+					greet: "GreetEntrypoint",
+					math: "MathEntrypoint",
+				},
+				script: `
+					import { WorkerEntrypoint } from "cloudflare:workers";
+					export class GreetEntrypoint extends WorkerEntrypoint {
+						fetch(request) { return new Response("hello from greet"); }
+					}
+					export class MathEntrypoint extends WorkerEntrypoint {
+						fetch(request) { return new Response("hello from math"); }
+					}
+					export default {
+						fetch() { return new Response("my-api:default"); }
+					}
+				`,
+			},
+		],
+	});
+	useDispose(mf);
+
+	// {entrypoint}.{worker}.localhost routes to named entrypoint
+	let res = await mf.dispatchFetch("http://greet.my-api.localhost/");
+	expect(await res.text()).toBe("hello from greet");
+
+	res = await mf.dispatchFetch("http://math.my-api.localhost/");
+	expect(await res.text()).toBe("hello from math");
+
+	// Worker-only hostname still routes to default
+	res = await mf.dispatchFetch("http://my-api.localhost/");
+	expect(await res.text()).toBe("my-api:default");
+
+	// Unknown entrypoint on known worker falls through to fallback
+	res = await mf.dispatchFetch("http://nonexistent.my-api.localhost/");
+	expect(await res.text()).toBe("main");
+});
+
+test("Miniflare: entrypointRouting ROUTE_OVERRIDE takes priority", async ({
+	expect,
+}) => {
+	const mf = new Miniflare({
+		workers: [
+			{
+				name: "main",
+				modules: true,
+				script: `export default { fetch() { return new Response("main"); } }`,
+			},
+			{
+				name: "my-api",
+				modules: true,
+				entrypointRouting: {},
+				script: `export default { fetch() { return new Response("my-api"); } }`,
+			},
+		],
+	});
+	useDispose(mf);
+
+	// ROUTE_OVERRIDE header should take priority over entrypoint routing
+	const res = await mf.dispatchFetch("http://my-api.localhost/", {
+		headers: { "MF-Route-Override": "main" },
+	});
+	expect(await res.text()).toBe("main");
+});
+
+test("Miniflare: entrypointRouting with multiple workers", async ({
+	expect,
+}) => {
+	const mf = new Miniflare({
+		workers: [
+			{
+				name: "main",
+				modules: true,
+				script: `export default { fetch() { return new Response("main"); } }`,
+			},
+			{
+				name: "api",
+				modules: true,
+				entrypointRouting: {
+					users: "UsersEntrypoint",
+				},
+				script: `
+					import { WorkerEntrypoint } from "cloudflare:workers";
+					export class UsersEntrypoint extends WorkerEntrypoint {
+						fetch(request) { return new Response("api:users"); }
+					}
+					export default { fetch() { return new Response("api:default"); } }
+				`,
+			},
+			{
+				name: "admin",
+				modules: true,
+				entrypointRouting: {},
+				script: `export default { fetch() { return new Response("admin:default"); } }`,
+			},
+		],
+	});
+	useDispose(mf);
+
+	let res = await mf.dispatchFetch("http://api.localhost/");
+	expect(await res.text()).toBe("api:default");
+
+	res = await mf.dispatchFetch("http://users.api.localhost/");
+	expect(await res.text()).toBe("api:users");
+
+	res = await mf.dispatchFetch("http://admin.localhost/");
+	expect(await res.text()).toBe("admin:default");
+
+	// Too many subdomain levels ignored, falls through to fallback
+	res = await mf.dispatchFetch("http://a.b.c.localhost/");
+	expect(await res.text()).toBe("main");
+});
+
 test("Miniflare: tail consumer called", async ({ expect }) => {
 	const mf = new Miniflare({
 		handleRuntimeStdio: () => {},

@@ -266,6 +266,11 @@ export const devPlugin = createPlugin("dev", (ctx) => {
 					});
 				}
 
+				const hasEntrypointRouting =
+					initialOptions.miniflareOptions.workers.some(
+						(w) => w.entrypointRouting
+					);
+
 				// post middleware
 				viteDevServer.middlewares.use(
 					createRequestHandler(ctx, async (request, req) => {
@@ -279,6 +284,25 @@ export const devPlugin = createPlugin("dev", (ctx) => {
 								redirect: "manual",
 							});
 						} else {
+							// When entrypoint routing is configured and the request
+							// hostname has a subdomain under .localhost, skip the route
+							// override so the entry worker's hostname-based routing can
+							// dispatch to the correct worker/entrypoint
+							if (hasEntrypointRouting) {
+								const host = request.headers.get("Host");
+								const hostname = host?.replace(/:\d+$/, "");
+								const isSubdomainRequest =
+									hostname &&
+									hostname.endsWith(".localhost") &&
+									hostname !== "localhost";
+
+								if (isSubdomainRequest) {
+									return ctx.miniflare.dispatchFetch(request, {
+										redirect: "manual",
+									});
+								}
+							}
+
 							request.headers.set(
 								CoreHeaders.ROUTE_OVERRIDE,
 								ROUTER_WORKER_NAME

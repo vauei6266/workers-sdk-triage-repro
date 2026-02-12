@@ -17,6 +17,16 @@ import { STATUS_CODES } from "./http";
 import { matchRoutes, WorkerRoute } from "./routing";
 import { handleScheduled } from "./scheduled";
 
+interface EntrypointRoutingConfig {
+	workers: Record<
+		string,
+		{
+			name: string;
+			entrypoints: Record<string, string>;
+		}
+	>;
+}
+
 type Env = {
 	[CoreBindings.SERVICE_LOOPBACK]: Fetcher;
 	[CoreBindings.SERVICE_USER_FALLBACK]: Fetcher;
@@ -24,6 +34,7 @@ type Env = {
 	[CoreBindings.TEXT_CUSTOM_SERVICE]: string;
 	[CoreBindings.TEXT_UPSTREAM_URL]?: string;
 	[CoreBindings.JSON_CF_BLOB]: IncomingRequestCfProperties;
+	[CoreBindings.JSON_HOSTNAME_ROUTING]?: EntrypointRoutingConfig;
 	[CoreBindings.JSON_ROUTES]: WorkerRoute[];
 	[CoreBindings.JSON_LOG_LEVEL]: LogLevel;
 	[CoreBindings.DATA_LIVE_RELOAD_SCRIPT]?: ArrayBuffer;
@@ -35,7 +46,11 @@ type Env = {
 } & {
 	[K in `${typeof CoreBindings.SERVICE_USER_ROUTE_PREFIX}${string}`]:
 		| Fetcher
-		| undefined; // Won't have a `Fetcher` for every possible `string`
+		| undefined;
+} & {
+	[K in `${typeof CoreBindings.SERVICE_USER_ENTRYPOINT_PREFIX}${string}`]:
+		| Fetcher
+		| undefined;
 };
 
 const encoder = new TextEncoder();
@@ -139,13 +154,79 @@ function getUserRequest(
 	return request;
 }
 
+const LOCALHOST_TLD = ".localhost";
+
+function resolveHostnameRoute(
+	hostname: string,
+	config: EntrypointRoutingConfig,
+	env: Env
+): Fetcher | undefined {
+	const host = hostname.toLowerCase();
+
+	// Check the hostname ends with .localhost
+	if (!host.endsWith(LOCALHOST_TLD)) {
+		return undefined;
+	}
+
+	// Extract subdomain prefix (everything before `.localhost`)
+	const prefix = host.slice(0, -LOCALHOST_TLD.length);
+	if (prefix === "") {
+		return undefined; // No subdomain, fall through
+	}
+
+	const parts = prefix.split(".");
+	if (parts.length === 1) {
+		// {worker}.localhost -> default entrypoint
+		const workerLabel = parts[0];
+		const workerConfig = config.workers[workerLabel];
+		if (workerConfig === undefined) {
+			return undefined;
+		}
+		return env[`${CoreBindings.SERVICE_USER_ROUTE_PREFIX}${workerConfig.name}`];
+	} else if (parts.length === 2) {
+		// {entrypoint}.{worker}.localhost -> named entrypoint
+		const entrypointLabel = parts[0];
+		const workerLabel = parts[1];
+		const workerConfig = config.workers[workerLabel];
+		if (workerConfig === undefined) {
+			return undefined;
+		}
+		const entrypointName = workerConfig.entrypoints[entrypointLabel];
+		if (entrypointName === undefined) {
+			return undefined;
+		}
+		return env[
+			`${CoreBindings.SERVICE_USER_ENTRYPOINT_PREFIX}${workerConfig.name}:${entrypointName}`
+		];
+	}
+
+	// 3+ subdomain parts -> ignore
+	return undefined;
+}
+
 function getTargetService(request: Request, url: URL, env: Env) {
 	let service: Fetcher | undefined = env[CoreBindings.SERVICE_USER_FALLBACK];
 
+	// 1. Explicit override header takes priority
 	const override = request.headers.get(CoreHeaders.ROUTE_OVERRIDE);
 	request.headers.delete(CoreHeaders.ROUTE_OVERRIDE);
 
-	const route = override ?? matchRoutes(env[CoreBindings.JSON_ROUTES], url);
+	if (override !== null) {
+		service = env[`${CoreBindings.SERVICE_USER_ROUTE_PREFIX}${override}`];
+		return service;
+	}
+
+	// 2. Hostname-based routing (opt-in)
+	const hostnameRouting = env[CoreBindings.JSON_HOSTNAME_ROUTING];
+	if (hostnameRouting) {
+		const resolved = resolveHostnameRoute(url.hostname, hostnameRouting, env);
+		if (resolved) {
+			return resolved;
+		}
+	}
+
+	// 3. Standard route matching (existing behavior)
+	const route = matchRoutes(env[CoreBindings.JSON_ROUTES], url);
 	if (route !== null) {
 		service = env[`${CoreBindings.SERVICE_USER_ROUTE_PREFIX}${route}`];
 	}

@@ -42,6 +42,7 @@ import {
 	D1_PLUGIN_NAME,
 	DURABLE_OBJECTS_PLUGIN_NAME,
 	DurableObjectClassNames,
+	EntrypointRoutingConfig,
 	getDirectSocketName,
 	getGlobalServices,
 	HELLO_WORLD_PLUGIN_NAME,
@@ -722,6 +723,31 @@ function getWorkerRoutes(
 		allRoutes.set(name, workerOpts.core.routes ?? []);
 	}
 	return allRoutes;
+}
+
+function getEntrypointRouting(
+	allWorkerOpts: PluginWorkerOptions[]
+): EntrypointRoutingConfig | undefined {
+	const workers: EntrypointRoutingConfig["workers"] = {};
+	let hasAny = false;
+
+	for (const workerOpts of allWorkerOpts) {
+		const entrypointRouting = workerOpts.core.entrypointRouting;
+		if (!entrypointRouting) {
+			continue;
+		}
+
+		const workerName = workerOpts.core.name ?? "";
+		// Derive hostname label from worker name (lowercase, underscores to hyphens)
+		const workerLabel = workerName.toLowerCase().replaceAll("_", "-");
+		workers[workerLabel] = {
+			name: workerName,
+			entrypoints: entrypointRouting,
+		};
+		hasAny = true;
+	}
+
+	return hasAny ? { workers } : undefined;
 }
 
 // Get the name of a binding in the `ProxyServer`'s `env`
@@ -1893,9 +1919,12 @@ export class Miniflare {
 			}
 		}
 
+		const allEntrypointRouting = getEntrypointRouting(allWorkerOpts);
+
 		const globalServices = getGlobalServices({
 			sharedOptions: sharedOpts.core,
 			allWorkerRoutes,
+			allEntrypointRouting,
 			/*
 			 * - if Workers + Assets project but NOT Vitest, the fallback Worker (see
 			 *   `MINIFLARE_USER_FALLBACK`) should point to the (assets) RPC Proxy Worker
