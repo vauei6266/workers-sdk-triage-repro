@@ -1,5 +1,6 @@
 import assert from "node:assert";
 import crypto from "node:crypto";
+import dns from "node:dns/promises";
 import { Abortable } from "node:events";
 import fs from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -723,6 +724,32 @@ function getWorkerRoutes(
 		allRoutes.set(name, workerOpts.core.routes ?? []);
 	}
 	return allRoutes;
+}
+
+let localhostSubdomainChecked = false;
+async function checkLocalhostSubdomainSupport(log: Log): Promise<void> {
+	if (localhostSubdomainChecked) {
+		return;
+	}
+	localhostSubdomainChecked = true;
+
+	let reason: string | undefined;
+	try {
+		const result = await dns.lookup("test.domain.localhost");
+		if (result.address !== "127.0.0.1" && result.address !== "::1") {
+			reason = `returned ${result.address} instead of loopback (127.0.0.1)`;
+		}
+	} catch {
+		reason = "cannot resolve them";
+	}
+
+	if (reason) {
+		log.warn(
+			`Localhost entrypoint routing relies on *.localhost subdomains, but your system's DNS resolver ${reason}.\n` +
+				"Some browsers resolve these independently and will work fine.\n" +
+				"See https://developers.cloudflare.com/workers/TODO for more details."
+		);
+	}
 }
 
 // Hostname aliases must be valid subdomain components: lowercase alphanumeric,
@@ -1960,6 +1987,10 @@ export class Miniflare {
 		}
 
 		const allEntrypointRouting = getEntrypointRouting(allWorkerOpts);
+
+		if (allEntrypointRouting) {
+			await checkLocalhostSubdomainSupport(this.#log);
+		}
 
 		const globalServices = getGlobalServices({
 			sharedOptions: sharedOpts.core,
