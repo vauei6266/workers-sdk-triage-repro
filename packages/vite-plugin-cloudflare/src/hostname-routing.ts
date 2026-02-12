@@ -1,17 +1,17 @@
 import type { Worker } from "./plugin-config";
 
-const HOSTNAME_LABEL_RE = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
+const ALIAS_RE = /^[a-z0-9]([a-z0-9_-]{0,61}[a-z0-9])?$/;
 
-function toHostnameLabel(name: string): string {
-	return name.toLowerCase().replaceAll("_", "-");
+function toAlias(name: string): string {
+	return name.toLowerCase();
 }
 
-function validateHostnameLabel(label: string, context: string): void {
-	if (!HOSTNAME_LABEL_RE.test(label)) {
+function validateAlias(alias: string, context: string): void {
+	if (!ALIAS_RE.test(alias)) {
 		throw new Error(
-			`Invalid hostname label "${label}" for ${context}. ` +
-				`Labels must contain only lowercase alphanumeric characters and hyphens, ` +
-				`must not start or end with a hyphen, and must be 1-63 characters long.`
+			`Invalid hostname alias "${alias}" for ${context}. ` +
+				`Aliases must contain only lowercase alphanumeric characters, hyphens, and underscores, ` +
+				`must not start or end with a hyphen or underscore, and must be 1-63 characters long.`
 		);
 	}
 }
@@ -19,11 +19,11 @@ function validateHostnameLabel(label: string, context: string): void {
 /**
  * Resolves entrypoint routing for a single worker based on its `exposeEntrypoints` config.
  *
- * Returns the `entrypointRouting` record (hostname label -> export name) to pass
+ * Returns the `entrypointRouting` record (export name -> hostname alias) to pass
  * to the worker's miniflare options, or `undefined` if the worker doesn't opt in.
  *
- * - `true`: all WorkerEntrypoint exports are exposed with lowercased names as hostname labels
- * - `Record<string, string | true>`: explicit mapping of export names to hostname labels
+ * - `true`: all WorkerEntrypoint exports are exposed with lowercased names as hostname aliases
+ * - `Record<string, string | true>`: explicit mapping of export names to hostname aliases
  *   (`true` values become the lowercased export name)
  */
 export function resolveEntrypointRouting(
@@ -36,11 +36,11 @@ export function resolveEntrypointRouting(
 	}
 
 	const workerName = worker.config.name;
-	const workerLabel = toHostnameLabel(workerName);
-	validateHostnameLabel(workerLabel, `worker "${workerName}"`);
+	const normalizedWorkerName = toAlias(workerName);
+	validateAlias(normalizedWorkerName, `worker "${workerName}"`);
 
 	const entrypoints: Record<string, string> = {};
-	const seenLabels = new Map<string, string>();
+	const seenAliases = new Map<string, string>();
 
 	if (exposeEntrypoints === true) {
 		// Expose all WorkerEntrypoint exports
@@ -49,42 +49,41 @@ export function resolveEntrypointRouting(
 				if (exportType !== "WorkerEntrypoint") {
 					continue;
 				}
-				const label = toHostnameLabel(exportName);
-				validateHostnameLabel(
-					label,
+				const alias = toAlias(exportName);
+				validateAlias(
+					alias,
 					`entrypoint "${exportName}" of worker "${workerName}"`
 				);
 
-				const existing = seenLabels.get(label);
+				const existing = seenAliases.get(alias);
 				if (existing) {
 					throw new Error(
-						`Hostname label collision in worker "${workerName}": ` +
-							`entrypoints "${existing}" and "${exportName}" both map to label "${label}".`
+						`Alias collision in worker "${workerName}": ` +
+							`entrypoints "${existing}" and "${exportName}" both map to alias "${alias}".`
 					);
 				}
-				seenLabels.set(label, exportName);
-				entrypoints[label] = exportName;
+				seenAliases.set(alias, exportName);
+				entrypoints[exportName] = alias;
 			}
 		}
 	} else {
 		// Explicit mapping
-		for (const [exportName, labelOrTrue] of Object.entries(exposeEntrypoints)) {
-			const label =
-				labelOrTrue === true ? toHostnameLabel(exportName) : labelOrTrue;
-			validateHostnameLabel(
-				label,
+		for (const [exportName, aliasOrTrue] of Object.entries(exposeEntrypoints)) {
+			const alias = aliasOrTrue === true ? toAlias(exportName) : aliasOrTrue;
+			validateAlias(
+				alias,
 				`entrypoint "${exportName}" of worker "${workerName}"`
 			);
 
-			const existing = seenLabels.get(label);
+			const existing = seenAliases.get(alias);
 			if (existing) {
 				throw new Error(
-					`Hostname label collision in worker "${workerName}": ` +
-						`entrypoints "${existing}" and "${exportName}" both map to label "${label}".`
+					`Alias collision in worker "${workerName}": ` +
+						`entrypoints "${existing}" and "${exportName}" both map to alias "${alias}".`
 				);
 			}
-			seenLabels.set(label, exportName);
-			entrypoints[label] = exportName;
+			seenAliases.set(alias, exportName);
+			entrypoints[exportName] = alias;
 		}
 	}
 

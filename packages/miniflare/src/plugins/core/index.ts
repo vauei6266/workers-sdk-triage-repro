@@ -1042,7 +1042,8 @@ export function getGlobalServices({
 					name: `${CoreBindings.SERVICE_USER_ENTRYPOINT_PREFIX}${workerConfig.name}:${entrypointName}`,
 					service: {
 						name: getUserServiceName(workerConfig.name),
-						entrypoint: entrypointName,
+						entrypoint:
+							entrypointName !== "default" ? entrypointName : undefined,
 					},
 				});
 			}

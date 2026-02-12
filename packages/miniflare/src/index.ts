@@ -738,11 +738,17 @@ function getEntrypointRouting(
 		}
 
 		const workerName = workerOpts.core.name ?? "";
-		// Derive hostname label from worker name (lowercase, underscores to hyphens)
-		const workerLabel = workerName.toLowerCase().replaceAll("_", "-");
-		workers[workerLabel] = {
+		// Normalize worker name for hostname matching (lowercase)
+		const normalizedWorkerName = workerName.toLowerCase();
+		// User-facing API is exportName -> alias, but the entry worker
+		// needs alias -> exportName for O(1) hostname lookup. Invert here.
+		const entrypoints: Record<string, string> = {};
+		for (const [exportName, alias] of Object.entries(entrypointRouting)) {
+			entrypoints[alias] = exportName;
+		}
+		workers[normalizedWorkerName] = {
 			name: workerName,
-			entrypoints: entrypointRouting,
+			entrypoints,
 		};
 		hasAny = true;
 	}

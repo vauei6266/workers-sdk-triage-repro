@@ -160,13 +160,14 @@ const LOCALHOST_SUFFIX = ".localhost";
  * Resolves hostname-based entrypoint routing.
  *
  * Single worker mode ({entrypoint}.localhost):
- *   - One subdomain level: look up as entrypoint name
+ *   - One subdomain level: look up as entrypoint alias
  *   - Two+ subdomain levels: error
  *
- * Multi worker mode ({worker}.localhost, {entrypoint}.{worker}.localhost):
- *   - One subdomain level: look up as worker name -> default entrypoint
+ * Multi worker mode ({entrypoint}.{worker}.localhost):
  *   - Two subdomain levels: look up as entrypoint.worker
- *   - Three+ subdomain levels: error
+ *   - Other subdomain levels: error
+ *
+ * Only entrypoints explicitly listed in the routing config are accessible.
  *
  * Returns the matched Fetcher, or undefined if the hostname has no subdomain
  * (i.e. plain "localhost"). Throws HttpError for unmatched subdomains.
@@ -188,11 +189,11 @@ function resolveHostnameRoute(
 	}
 
 	const parts = prefix.split(".");
-	const workerLabels = Object.keys(config.workers);
-	const isSingleWorker = workerLabels.length === 1;
+	const workerNames = Object.keys(config.workers);
+	const isSingleWorker = workerNames.length === 1;
 
 	if (isSingleWorker) {
-		const workerConfig = config.workers[workerLabels[0]];
+		const workerConfig = config.workers[workerNames[0]];
 
 		if (parts.length !== 1) {
 			throw new HttpError(
@@ -202,12 +203,12 @@ function resolveHostnameRoute(
 			);
 		}
 
-		const label = parts[0];
-		const entrypointName = workerConfig.entrypoints[label];
+		const alias = parts[0];
+		const entrypointName = workerConfig.entrypoints[alias];
 		if (entrypointName === undefined) {
 			throw new HttpError(
 				404,
-				`Entrypoint "${label}" not found on worker "${workerConfig.name}". ` +
+				`Entrypoint "${alias}" not found on worker "${workerConfig.name}". ` +
 					`Available entrypoints: ${Object.keys(workerConfig.entrypoints).join(", ") || "(none)"}`
 			);
 		}
@@ -217,49 +218,35 @@ function resolveHostnameRoute(
 		];
 	}
 
-	// Multi worker mode
-	if (parts.length === 1) {
-		// {worker}.localhost -> default entrypoint
-		const workerConfig = config.workers[parts[0]];
-		if (workerConfig === undefined) {
-			throw new HttpError(
-				404,
-				`Worker "${parts[0]}" not found. ` +
-					`Available workers: ${workerLabels.join(", ")}`
-			);
-		}
-		return env[`${CoreBindings.SERVICE_USER_ROUTE_PREFIX}${workerConfig.name}`];
+	// Multi worker mode: always requires {entrypoint}.{worker}.localhost
+	if (parts.length !== 2) {
+		throw new HttpError(
+			404,
+			`Invalid subdomain: "${parts.join(".")}". ` +
+				`Use {entrypoint}.{worker}.localhost`
+		);
 	}
 
-	if (parts.length === 2) {
-		// {entrypoint}.{worker}.localhost -> named entrypoint
-		const [entrypointLabel, workerLabel] = parts;
-		const workerConfig = config.workers[workerLabel];
-		if (workerConfig === undefined) {
-			throw new HttpError(
-				404,
-				`Worker "${workerLabel}" not found. ` +
-					`Available workers: ${workerLabels.join(", ")}`
-			);
-		}
-		const entrypointName = workerConfig.entrypoints[entrypointLabel];
-		if (entrypointName === undefined) {
-			throw new HttpError(
-				404,
-				`Entrypoint "${entrypointLabel}" not found on worker "${workerConfig.name}". ` +
-					`Available entrypoints: ${Object.keys(workerConfig.entrypoints).join(", ") || "(none)"}`
-			);
-		}
-		return env[
-			`${CoreBindings.SERVICE_USER_ENTRYPOINT_PREFIX}${workerConfig.name}:${entrypointName}`
-		];
+	const [entrypointAlias, normalizedWorkerName] = parts;
+	const workerConfig = config.workers[normalizedWorkerName];
+	if (workerConfig === undefined) {
+		throw new HttpError(
+			404,
+			`Worker "${normalizedWorkerName}" not found. ` +
+				`Available workers: ${workerNames.join(", ")}`
+		);
 	}
-
-	throw new HttpError(
-		404,
-		`Invalid subdomain: "${parts.join(".")}". ` +
-			`Use {worker}.localhost or {entrypoint}.{worker}.localhost`
-	);
+	const entrypointName = workerConfig.entrypoints[entrypointAlias];
+	if (entrypointName === undefined) {
+		throw new HttpError(
+			404,
+			`Entrypoint "${entrypointAlias}" not found on worker "${workerConfig.name}". ` +
+				`Available entrypoints: ${Object.keys(workerConfig.entrypoints).join(", ") || "(none)"}`
+		);
+	}
+	return env[
+		`${CoreBindings.SERVICE_USER_ENTRYPOINT_PREFIX}${workerConfig.name}:${entrypointName}`
+	];
 }
 
 function getTargetService(request: Request, url: URL, env: Env) {

@@ -948,8 +948,8 @@ test("Miniflare: entrypointRouting single worker uses {entrypoint}.localhost", a
 				name: "my-api",
 				modules: true,
 				entrypointRouting: {
-					greet: "GreetEntrypoint",
-					math: "MathEntrypoint",
+					GreetEntrypoint: "greet",
+					MathEntrypoint: "math",
 				},
 				script: `
 					import { WorkerEntrypoint } from "cloudflare:workers";
@@ -989,7 +989,7 @@ test("Miniflare: entrypointRouting single worker returns 404 for unknown entrypo
 				name: "my-api",
 				modules: true,
 				entrypointRouting: {
-					greet: "GreetEntrypoint",
+					GreetEntrypoint: "greet",
 				},
 				script: `
 					import { WorkerEntrypoint } from "cloudflare:workers";
@@ -1041,7 +1041,7 @@ test("Miniflare: entrypointRouting ROUTE_OVERRIDE takes priority", async ({
 	expect(await res.text()).toBe("main");
 });
 
-test("Miniflare: entrypointRouting multi worker uses {worker}.localhost and {entrypoint}.{worker}.localhost", async ({
+test("Miniflare: entrypointRouting multi worker uses {entrypoint}.{worker}.localhost", async ({
 	expect,
 }) => {
 	const mf = new Miniflare({
@@ -1055,7 +1055,8 @@ test("Miniflare: entrypointRouting multi worker uses {worker}.localhost and {ent
 				name: "api",
 				modules: true,
 				entrypointRouting: {
-					users: "UsersEntrypoint",
+					default: "default",
+					UsersEntrypoint: "users",
 				},
 				script: `
 					import { WorkerEntrypoint } from "cloudflare:workers";
@@ -1068,22 +1069,24 @@ test("Miniflare: entrypointRouting multi worker uses {worker}.localhost and {ent
 			{
 				name: "admin",
 				modules: true,
-				entrypointRouting: {},
+				entrypointRouting: {
+					default: "default",
+				},
 				script: `export default { fetch() { return new Response("admin:default"); } }`,
 			},
 		],
 	});
 	useDispose(mf);
 
-	// {worker}.localhost routes to worker's default entrypoint
-	let res = await mf.dispatchFetch("http://api.localhost/");
-	expect(await res.text()).toBe("api:default");
-
-	// {entrypoint}.{worker}.localhost routes to named entrypoint
-	res = await mf.dispatchFetch("http://users.api.localhost/");
+	// {entrypoint}.{worker}.localhost routes to entrypoint
+	let res = await mf.dispatchFetch("http://users.api.localhost/");
 	expect(await res.text()).toBe("api:users");
 
-	res = await mf.dispatchFetch("http://admin.localhost/");
+	// Explicit default entrypoint mapping
+	res = await mf.dispatchFetch("http://default.api.localhost/");
+	expect(await res.text()).toBe("api:default");
+
+	res = await mf.dispatchFetch("http://default.admin.localhost/");
 	expect(await res.text()).toBe("admin:default");
 
 	// Plain localhost falls through to fallback (first worker)
@@ -1091,7 +1094,7 @@ test("Miniflare: entrypointRouting multi worker uses {worker}.localhost and {ent
 	expect(await res.text()).toBe("main");
 });
 
-test("Miniflare: entrypointRouting multi worker returns 404 for unknown worker or entrypoint", async ({
+test("Miniflare: entrypointRouting multi worker returns 404 for invalid subdomains", async ({
 	expect,
 }) => {
 	const mf = new Miniflare({
@@ -1105,7 +1108,7 @@ test("Miniflare: entrypointRouting multi worker returns 404 for unknown worker o
 				name: "api",
 				modules: true,
 				entrypointRouting: {
-					users: "UsersEntrypoint",
+					UsersEntrypoint: "users",
 				},
 				script: `
 					import { WorkerEntrypoint } from "cloudflare:workers";
@@ -1119,8 +1122,13 @@ test("Miniflare: entrypointRouting multi worker returns 404 for unknown worker o
 	});
 	useDispose(mf);
 
+	// Single subdomain returns 404 (multi worker requires {entrypoint}.{worker})
+	let res = await mf.dispatchFetch("http://api.localhost/");
+	expect(res.status).toBe(404);
+	await res.arrayBuffer();
+
 	// Unknown worker returns 404
-	let res = await mf.dispatchFetch("http://unknown.localhost/");
+	res = await mf.dispatchFetch("http://users.unknown.localhost/");
 	expect(res.status).toBe(404);
 	await res.arrayBuffer();
 
@@ -1129,7 +1137,7 @@ test("Miniflare: entrypointRouting multi worker returns 404 for unknown worker o
 	expect(res.status).toBe(404);
 	await res.arrayBuffer();
 
-	// Too many subdomain levels returns 404
+	// Three+ subdomain levels returns 404
 	res = await mf.dispatchFetch("http://a.b.c.localhost/");
 	expect(res.status).toBe(404);
 	await res.arrayBuffer();
