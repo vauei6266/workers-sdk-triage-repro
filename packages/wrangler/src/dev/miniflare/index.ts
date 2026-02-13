@@ -1001,7 +1001,7 @@ export async function buildMiniflareOptions(
 					entrypoint: name,
 					proxy: true,
 				})),
-				entrypointSubdomains,
+				unsafeEntrypointSubdomains: entrypointSubdomains,
 				containerEngine: config.containerEngine,
 				zone: config.zone,
 			},

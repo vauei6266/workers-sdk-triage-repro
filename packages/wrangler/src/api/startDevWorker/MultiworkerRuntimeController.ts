@@ -96,20 +96,18 @@ export class MultiworkerRuntimeController extends LocalRuntimeController {
 
 		const secondary = [...this.#options.values()].filter((o) => !o.primary);
 
-		const allWorkers = [
-			...primary.options.workers,
-			...secondary.flatMap((o) =>
-				o.options.workers.map((w) => {
-					// TODO: investigate why ratelimits causes everything to crash
-					delete w.ratelimits;
-					return w;
-				})
-			),
-		];
-
 		return {
 			...primary.options,
-			workers: allWorkers,
+			workers: [
+				...primary.options.workers,
+				...secondary.flatMap((o) =>
+					o.options.workers.map((w) => {
+						// TODO: investigate why ratelimits causes everything to crash
+						delete w.ratelimits;
+						return w;
+					})
+				),
+			],
 		};
 	}
 
