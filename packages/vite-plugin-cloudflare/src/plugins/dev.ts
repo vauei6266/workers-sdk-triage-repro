@@ -266,13 +266,6 @@ export const devPlugin = createPlugin("dev", (ctx) => {
 					});
 				}
 
-				const hasEntrypointSubdomains =
-					initialOptions.miniflareOptions.workers?.some(
-						(w) =>
-							w.entrypointSubdomains &&
-							Object.keys(w.entrypointSubdomains).length > 0
-					) ?? false;
-
 				// post middleware
 				viteDevServer.middlewares.use(
 					createRequestHandler(ctx, async (request, req) => {
@@ -287,25 +280,19 @@ export const devPlugin = createPlugin("dev", (ctx) => {
 							});
 						} else {
 							// Let the entry worker's hostname routing handle subdomain requests
-							if (hasEntrypointSubdomains) {
-								const host = request.headers.get("Host");
-								const hostname = host?.replace(/:\d+$/, "");
-								const isSubdomainRequest =
-									hostname &&
-									hostname.endsWith(".localhost") &&
-									hostname !== "localhost";
+							const host = request.headers.get("Host");
+							const hostname = host?.replace(/:\d+$/, "");
+							const isSubdomainRequest =
+								hostname &&
+								hostname.endsWith(".localhost") &&
+								hostname !== "localhost";
 
-								if (isSubdomainRequest) {
-									return ctx.miniflare.dispatchFetch(request, {
-										redirect: "manual",
-									});
-								}
+							if (!isSubdomainRequest) {
+								request.headers.set(
+									CoreHeaders.ROUTE_OVERRIDE,
+									ROUTER_WORKER_NAME
+								);
 							}
-
-							request.headers.set(
-								CoreHeaders.ROUTE_OVERRIDE,
-								ROUTER_WORKER_NAME
-							);
 
 							return ctx.miniflare.dispatchFetch(request, {
 								redirect: "manual",
