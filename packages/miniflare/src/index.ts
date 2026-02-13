@@ -768,10 +768,14 @@ function validateAlias(alias: string, context: string): void {
 }
 
 function getEntrypointRouting(
+	localhostRouting: "short" | "full" | undefined,
 	allWorkerOpts: PluginWorkerOptions[]
 ): EntrypointRoutingConfig | undefined {
+	if (!localhostRouting) {
+		return undefined;
+	}
+
 	const workers: EntrypointRoutingConfig["workers"] = {};
-	let hasAny = false;
 
 	for (const workerOpts of allWorkerOpts) {
 		const entrypointRouting = workerOpts.core.entrypointRouting;
@@ -811,10 +815,18 @@ function getEntrypointRouting(
 			name: workerName,
 			entrypoints,
 		};
-		hasAny = true;
 	}
 
-	return hasAny ? { workers } : undefined;
+	const workerCount = Object.keys(workers).length;
+	if (localhostRouting === "short" && workerCount > 1) {
+		throw new MiniflareCoreError(
+			"ERR_VALIDATION",
+			`localhostRouting is "short" but ${workerCount} workers have entrypointRouting configured. ` +
+				`Use "full" for multi-worker entrypoint routing ({entrypoint}.{worker}.localhost).`
+		);
+	}
+
+	return { localhostRouting, workers };
 }
 
 // Get the name of a binding in the `ProxyServer`'s `env`
@@ -1986,7 +1998,10 @@ export class Miniflare {
 			}
 		}
 
-		const allEntrypointRouting = getEntrypointRouting(allWorkerOpts);
+		const allEntrypointRouting = getEntrypointRouting(
+			sharedOpts.core.localhostRouting,
+			allWorkerOpts
+		);
 
 		if (allEntrypointRouting) {
 			await checkLocalhostSubdomainSupport(this.#log);

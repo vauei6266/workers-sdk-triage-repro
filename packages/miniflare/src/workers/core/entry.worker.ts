@@ -18,6 +18,7 @@ import { matchRoutes, WorkerRoute } from "./routing";
 import { handleScheduled } from "./scheduled";
 
 interface EntrypointRoutingConfig {
+	localhostRouting: "short" | "full";
 	workers: Record<
 		string,
 		{
@@ -157,13 +158,13 @@ function getUserRequest(
 const LOCALHOST_SUFFIX = ".localhost";
 
 /**
- * Resolves hostname-based entrypoint routing.
+ * Resolves localhost entrypoint routing.
  *
- * Single worker mode ({entrypoint}.localhost):
+ * Short mode ({entrypoint}.localhost):
  *   - One subdomain level: look up as entrypoint alias
  *   - Two+ subdomain levels: error
  *
- * Multi worker mode ({entrypoint}.{worker}.localhost):
+ * Full mode ({entrypoint}.{worker}.localhost):
  *   - Two subdomain levels: look up as entrypoint.worker
  *   - Other subdomain levels: error
  *
@@ -189,17 +190,16 @@ function resolveHostnameRoute(
 	}
 
 	const parts = prefix.split(".");
-	const workerNames = Object.keys(config.workers);
-	const isSingleWorker = workerNames.length === 1;
 
-	if (isSingleWorker) {
+	if (config.localhostRouting === "short") {
+		const workerNames = Object.keys(config.workers);
 		const workerConfig = config.workers[workerNames[0]];
 
 		if (parts.length !== 1) {
 			throw new HttpError(
 				404,
 				`Unknown entrypoint: "${parts.join(".")}". ` +
-					`With a single worker, use {entrypoint}.localhost`
+					`Use {entrypoint}.localhost`
 			);
 		}
 
@@ -218,7 +218,7 @@ function resolveHostnameRoute(
 		];
 	}
 
-	// Multi worker mode: always requires {entrypoint}.{worker}.localhost
+	// Full mode: always requires {entrypoint}.{worker}.localhost
 	if (parts.length !== 2) {
 		throw new HttpError(
 			404,
@@ -230,6 +230,7 @@ function resolveHostnameRoute(
 	const [entrypointAlias, normalizedWorkerName] = parts;
 	const workerConfig = config.workers[normalizedWorkerName];
 	if (workerConfig === undefined) {
+		const workerNames = Object.keys(config.workers);
 		throw new HttpError(
 			404,
 			`Worker "${normalizedWorkerName}" not found. ` +

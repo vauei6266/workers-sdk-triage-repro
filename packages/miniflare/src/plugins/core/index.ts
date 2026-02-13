@@ -296,6 +296,11 @@ export const CoreSharedOptionsSchema = z
 		// Strip the MF-DISABLE_PRETTY_ERROR header from user request
 		stripDisablePrettyError: z.boolean().default(true),
 
+		// Enable localhost entrypoint routing.
+		// "short" = {entrypoint}.localhost (single worker only)
+		// "full" = {entrypoint}.{worker}.localhost (multiple workers)
+		localhostRouting: z.enum(["short", "full"]).optional(),
+
 		// Whether to get structured logs from workerd or not (defaults to `true` is a
 		// `handleStructuredLogs` is set, to `false` otherwise)
 		// This option is useful in combination with a custom handleRuntimeStdio.
@@ -961,6 +966,7 @@ export const CORE_PLUGIN: Plugin<
 };
 
 export interface EntrypointRoutingConfig {
+	localhostRouting: "short" | "full";
 	workers: Record<
 		string,
 		{

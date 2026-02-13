@@ -939,10 +939,11 @@ test("Miniflare: service binding to named entrypoint that implements a method re
 	expect(rpcTarget.id).toEqual("test-id");
 });
 
-test("Miniflare: entrypointRouting single worker uses {entrypoint}.localhost", async ({
+test("Miniflare: localhostRouting short uses {entrypoint}.localhost", async ({
 	expect,
 }) => {
 	const mf = new Miniflare({
+		localhostRouting: "short",
 		workers: [
 			{
 				name: "my-api",
@@ -968,7 +969,7 @@ test("Miniflare: entrypointRouting single worker uses {entrypoint}.localhost", a
 	});
 	useDispose(mf);
 
-	// Single worker: {entrypoint}.localhost routes to named entrypoint
+	// {entrypoint}.localhost routes to named entrypoint
 	let res = await mf.dispatchFetch("http://greet.localhost/");
 	expect(await res.text()).toBe("hello from greet");
 
@@ -978,37 +979,13 @@ test("Miniflare: entrypointRouting single worker uses {entrypoint}.localhost", a
 	// Plain localhost falls through to default entrypoint
 	res = await mf.dispatchFetch("http://localhost/");
 	expect(await res.text()).toBe("my-api:default");
-});
-
-test("Miniflare: entrypointRouting single worker returns 404 for unknown entrypoint", async ({
-	expect,
-}) => {
-	const mf = new Miniflare({
-		workers: [
-			{
-				name: "my-api",
-				modules: true,
-				entrypointRouting: {
-					GreetEntrypoint: "greet",
-				},
-				script: `
-					import { WorkerEntrypoint } from "cloudflare:workers";
-					export class GreetEntrypoint extends WorkerEntrypoint {
-						fetch(request) { return new Response("hello from greet"); }
-					}
-					export default { fetch() { return new Response("my-api:default"); } }
-				`,
-			},
-		],
-	});
-	useDispose(mf);
 
 	// Unknown entrypoint returns 404
-	let res = await mf.dispatchFetch("http://unknown.localhost/");
+	res = await mf.dispatchFetch("http://unknown.localhost/");
 	expect(res.status).toBe(404);
 	await res.arrayBuffer();
 
-	// Multi-level subdomains are not supported in single worker mode
+	// Multi-level subdomains are not supported in short mode
 	res = await mf.dispatchFetch("http://greet.my-api.localhost/");
 	expect(res.status).toBe(404);
 	await res.arrayBuffer();
@@ -1018,6 +995,7 @@ test("Miniflare: entrypointRouting ROUTE_OVERRIDE takes priority", async ({
 	expect,
 }) => {
 	const mf = new Miniflare({
+		localhostRouting: "full",
 		workers: [
 			{
 				name: "main",
@@ -1041,10 +1019,11 @@ test("Miniflare: entrypointRouting ROUTE_OVERRIDE takes priority", async ({
 	expect(await res.text()).toBe("main");
 });
 
-test("Miniflare: entrypointRouting multi worker uses {entrypoint}.{worker}.localhost", async ({
+test("Miniflare: localhostRouting full uses {entrypoint}.{worker}.localhost", async ({
 	expect,
 }) => {
 	const mf = new Miniflare({
+		localhostRouting: "full",
 		workers: [
 			{
 				name: "main",
@@ -1092,38 +1071,9 @@ test("Miniflare: entrypointRouting multi worker uses {entrypoint}.{worker}.local
 	// Plain localhost falls through to fallback (first worker)
 	res = await mf.dispatchFetch("http://localhost/");
 	expect(await res.text()).toBe("main");
-});
 
-test("Miniflare: entrypointRouting multi worker returns 404 for invalid subdomains", async ({
-	expect,
-}) => {
-	const mf = new Miniflare({
-		workers: [
-			{
-				name: "main",
-				modules: true,
-				script: `export default { fetch() { return new Response("main"); } }`,
-			},
-			{
-				name: "api",
-				modules: true,
-				entrypointRouting: {
-					UsersEntrypoint: "users",
-				},
-				script: `
-					import { WorkerEntrypoint } from "cloudflare:workers";
-					export class UsersEntrypoint extends WorkerEntrypoint {
-						fetch(request) { return new Response("api:users"); }
-					}
-					export default { fetch() { return new Response("api:default"); } }
-				`,
-			},
-		],
-	});
-	useDispose(mf);
-
-	// Single subdomain returns 404 (multi worker requires {entrypoint}.{worker})
-	let res = await mf.dispatchFetch("http://api.localhost/");
+	// Single subdomain returns 404 (full mode requires {entrypoint}.{worker})
+	res = await mf.dispatchFetch("http://api.localhost/");
 	expect(res.status).toBe(404);
 	await res.arrayBuffer();
 
