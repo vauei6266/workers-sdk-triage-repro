@@ -939,7 +939,7 @@ test("Miniflare: service binding to named entrypoint that implements a method re
 	expect(rpcTarget.id).toEqual("test-id");
 });
 
-test("Miniflare: entrypointRouting ROUTE_OVERRIDE takes priority", async ({
+test("Miniflare: entrypointSubdomains ROUTE_OVERRIDE takes priority", async ({
 	expect,
 }) => {
 	const mf = new Miniflare({
@@ -952,7 +952,7 @@ test("Miniflare: entrypointRouting ROUTE_OVERRIDE takes priority", async ({
 			{
 				name: "my-api",
 				modules: true,
-				entrypointRouting: {},
+				entrypointSubdomains: {},
 				script: `export default { fetch() { return new Response("my-api"); } }`,
 			},
 		],
@@ -966,7 +966,7 @@ test("Miniflare: entrypointRouting ROUTE_OVERRIDE takes priority", async ({
 	expect(await res.text()).toBe("main");
 });
 
-test("Miniflare: entrypointRouting uses {entrypoint}.{worker}.localhost", async ({
+test("Miniflare: entrypointSubdomains uses {entrypoint}.{worker}.localhost", async ({
 	expect,
 }) => {
 	const mf = new Miniflare({
@@ -979,7 +979,7 @@ test("Miniflare: entrypointRouting uses {entrypoint}.{worker}.localhost", async 
 			{
 				name: "api",
 				modules: true,
-				entrypointRouting: {
+				entrypointSubdomains: {
 					default: "default",
 					UsersEntrypoint: "users",
 				},
@@ -994,10 +994,25 @@ test("Miniflare: entrypointRouting uses {entrypoint}.{worker}.localhost", async 
 			{
 				name: "admin",
 				modules: true,
-				entrypointRouting: {
+				entrypointSubdomains: {
 					default: "default",
 				},
 				script: `export default { fetch() { return new Response("admin:default"); } }`,
+			},
+			{
+				// Worker that only exposes named entrypoints (no default)
+				name: "internal",
+				modules: true,
+				entrypointSubdomains: {
+					HealthEntrypoint: "health",
+				},
+				script: `
+					import { WorkerEntrypoint } from "cloudflare:workers";
+					export class HealthEntrypoint extends WorkerEntrypoint {
+						fetch() { return new Response("internal:health"); }
+					}
+					export default { fetch() { return new Response("internal:default"); } }
+				`,
 			},
 		],
 	});
@@ -1014,14 +1029,30 @@ test("Miniflare: entrypointRouting uses {entrypoint}.{worker}.localhost", async 
 	res = await mf.dispatchFetch("http://default.admin.localhost/");
 	expect(await res.text()).toBe("admin:default");
 
+	// {worker}.localhost routes to default entrypoint when exposed
+	res = await mf.dispatchFetch("http://api.localhost/");
+	expect(await res.text()).toBe("api:default");
+
+	res = await mf.dispatchFetch("http://admin.localhost/");
+	expect(await res.text()).toBe("admin:default");
+
+	// {worker}.localhost returns 404 when default is not exposed
+	res = await mf.dispatchFetch("http://internal.localhost/");
+	expect(res.status).toBe(404);
+	await res.arrayBuffer();
+
+	// default.{worker}.localhost returns 404 when default is not exposed
+	res = await mf.dispatchFetch("http://default.internal.localhost/");
+	expect(res.status).toBe(404);
+	await res.arrayBuffer();
+
+	// Named entrypoint on worker without default still works
+	res = await mf.dispatchFetch("http://health.internal.localhost/");
+	expect(await res.text()).toBe("internal:health");
+
 	// Plain localhost falls through to fallback (first worker)
 	res = await mf.dispatchFetch("http://localhost/");
 	expect(await res.text()).toBe("main");
-
-	// Single subdomain returns 404 (full mode requires {entrypoint}.{worker})
-	res = await mf.dispatchFetch("http://api.localhost/");
-	expect(res.status).toBe(404);
-	await res.arrayBuffer();
 
 	// Unknown worker returns 404
 	res = await mf.dispatchFetch("http://users.unknown.localhost/");
@@ -1039,7 +1070,7 @@ test("Miniflare: entrypointRouting uses {entrypoint}.{worker}.localhost", async 
 	await res.arrayBuffer();
 });
 
-test("Miniflare: entrypointRouting routes /cdn-cgi/handler/* to correct worker", async ({
+test("Miniflare: entrypointSubdomains routes /cdn-cgi/handler/* to correct worker", async ({
 	expect,
 }) => {
 	const mf = new Miniflare({
@@ -1053,7 +1084,7 @@ test("Miniflare: entrypointRouting routes /cdn-cgi/handler/* to correct worker",
 			{
 				name: "worker-a",
 				modules: true,
-				entrypointRouting: {
+				entrypointSubdomains: {
 					default: "default",
 				},
 				script: `
@@ -1071,7 +1102,7 @@ test("Miniflare: entrypointRouting routes /cdn-cgi/handler/* to correct worker",
 			{
 				name: "worker-b",
 				modules: true,
-				entrypointRouting: {
+				entrypointSubdomains: {
 					default: "default",
 				},
 				script: `

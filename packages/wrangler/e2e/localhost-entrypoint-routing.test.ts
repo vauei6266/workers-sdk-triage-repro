@@ -113,6 +113,8 @@ describe.skipIf(!localhostSubdomainsSupported)(
 				"greet.worker-a": `http://greet.worker-a.localhost:${port}`,
 				"farewell.worker-a": `http://farewell.worker-a.localhost:${port}`,
 				"echo.worker-b": `http://echo.worker-b.localhost:${port}`,
+				"worker-a": `http://worker-a.localhost:${port}`,
+				"worker-b": `http://worker-b.localhost:${port}`,
 				greet: `http://greet.localhost:${port}`,
 				"greet.unknown": `http://greet.unknown.localhost:${port}`,
 				"nonexistent.worker-a": `http://nonexistent.worker-a.localhost:${port}`,
@@ -138,12 +140,26 @@ describe.skipIf(!localhostSubdomainsSupported)(
 			await expect(fetchText(urls["echo.worker-b"])).resolves.toBe("echo:/");
 		});
 
+		it("routes to worker-a default via {worker}.localhost", async () => {
+			const urls = await startWorkers();
+			await expect(fetchText(urls["worker-a"])).resolves.toBe(
+				"worker-a default"
+			);
+		});
+
+		it("routes to worker-b default via {worker}.localhost", async () => {
+			const urls = await startWorkers();
+			await expect(fetchText(urls["worker-b"])).resolves.toBe(
+				"worker-b default"
+			);
+		});
+
 		it("falls through to primary worker default on plain localhost", async () => {
 			const urls = await startWorkers();
 			await expect(fetchText(urls.default)).resolves.toBe("worker-a default");
 		});
 
-		it("returns 404 for a single-level subdomain", async () => {
+		it("returns 404 for unknown worker via single-level subdomain", async () => {
 			const urls = await startWorkers();
 			const res = await fetch(urls.greet);
 			expect(res.status).toBe(404);

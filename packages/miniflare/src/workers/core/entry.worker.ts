@@ -188,16 +188,23 @@ function resolveHostnameRoute(
 
 	const parts = prefix.split(".");
 
-	// Always requires {entrypoint}.{worker}.localhost
-	if (parts.length !== 2) {
+	let normalizedWorkerName: string;
+	let entrypointAlias: string | undefined;
+
+	if (parts.length === 1) {
+		// {worker}.localhost — shorthand for default entrypoint
+		normalizedWorkerName = parts[0];
+	} else if (parts.length === 2) {
+		// {entrypoint}.{worker}.localhost
+		[entrypointAlias, normalizedWorkerName] = parts;
+	} else {
 		throw new HttpError(
 			404,
 			`Invalid subdomain: "${parts.join(".")}". ` +
-				`Use {entrypoint}.{worker}.localhost`
+				`Use {entrypoint}.{worker}.localhost or {worker}.localhost`
 		);
 	}
 
-	const [entrypointAlias, normalizedWorkerName] = parts;
 	const workerConfig = config.workers[normalizedWorkerName];
 	if (workerConfig === undefined) {
 		const workerNames = Object.keys(config.workers);
@@ -207,6 +214,24 @@ function resolveHostnameRoute(
 				`Available workers: ${workerNames.join(", ")}`
 		);
 	}
+
+	if (entrypointAlias === undefined) {
+		// {worker}.localhost — check if default export is exposed
+		const defaultExposed = Object.values(workerConfig.entrypoints).includes(
+			"default"
+		);
+		if (!defaultExposed) {
+			throw new HttpError(
+				404,
+				`Worker "${workerConfig.name}" does not expose its default entrypoint. ` +
+					`Available entrypoints: ${Object.keys(workerConfig.entrypoints).join(", ") || "(none)"}`
+			);
+		}
+		return env[
+			`${CoreBindings.SERVICE_USER_ENTRYPOINT_PREFIX}${workerConfig.name}:default`
+		];
+	}
+
 	const entrypointName = workerConfig.entrypoints[entrypointAlias];
 	if (entrypointName === undefined) {
 		throw new HttpError(

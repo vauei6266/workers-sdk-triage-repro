@@ -17,12 +17,21 @@ describe.skipIf(isBuild)("entrypoint routing", () => {
 		expect(result).toEqual({ name: "Worker B: Named entrypoint" });
 	});
 
+	test("{worker}.localhost routes to default entrypoint", async ({
+		expect,
+	}) => {
+		const result = await getJsonResponse("/", "worker-a.localhost");
+		expect(result).toEqual({ name: "Worker A" });
+	});
+
 	test("plain localhost falls through to default", async ({ expect }) => {
 		const result = await getJsonResponse("/");
 		expect(result).toEqual({ name: "Worker A" });
 	});
 
-	test("returns 404 for single-level subdomain", async ({ expect }) => {
+	test("returns 404 for unknown worker via single-level subdomain", async ({
+		expect,
+	}) => {
 		const response = await getResponse("/", "greet.localhost");
 		expect(response.status()).toBe(404);
 	});

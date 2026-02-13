@@ -773,8 +773,8 @@ function getEntrypointRouting(
 	const workers: EntrypointRoutingConfig["workers"] = {};
 
 	for (const workerOpts of allWorkerOpts) {
-		const entrypointRouting = workerOpts.core.entrypointRouting;
-		if (!entrypointRouting) {
+		const entrypointSubdomains = workerOpts.core.entrypointSubdomains;
+		if (!entrypointSubdomains) {
 			continue;
 		}
 
@@ -787,7 +787,7 @@ function getEntrypointRouting(
 		const entrypoints: Record<string, string> = {};
 		const seenAliases = new Map<string, string>();
 
-		for (const [exportName, rawAlias] of Object.entries(entrypointRouting)) {
+		for (const [exportName, rawAlias] of Object.entries(entrypointSubdomains)) {
 			const alias = rawAlias.toLowerCase();
 			validateAlias(
 				alias,

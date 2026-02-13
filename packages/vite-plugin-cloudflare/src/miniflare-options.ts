@@ -328,7 +328,7 @@ export async function getDevMiniflareOptions(
 								);
 							}
 
-							const entrypointRouting = resolveEntrypointRouting(
+							const entrypointSubdomains = resolveEntrypointRouting(
 								worker,
 								exportTypes
 							);
@@ -338,7 +338,7 @@ export async function getDevMiniflareOptions(
 								worker: {
 									...workerOptions,
 									name: worker.config.name,
-									entrypointRouting,
+									entrypointSubdomains,
 									modulesRoot: miniflareModulesRoot,
 									modules: [
 										{

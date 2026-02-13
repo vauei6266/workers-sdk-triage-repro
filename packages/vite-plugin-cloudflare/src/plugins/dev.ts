@@ -266,10 +266,11 @@ export const devPlugin = createPlugin("dev", (ctx) => {
 					});
 				}
 
-				const hasEntrypointRouting =
+				const hasEntrypointSubdomains =
 					initialOptions.miniflareOptions.workers?.some(
 						(w) =>
-							w.entrypointRouting && Object.keys(w.entrypointRouting).length > 0
+							w.entrypointSubdomains &&
+							Object.keys(w.entrypointSubdomains).length > 0
 					) ?? false;
 
 				// post middleware
@@ -285,11 +286,11 @@ export const devPlugin = createPlugin("dev", (ctx) => {
 								redirect: "manual",
 							});
 						} else {
-							// When entrypoint routing is configured and the request
+							// When entrypoint subdomains are configured and the request
 							// hostname has a subdomain under .localhost, skip the route
 							// override so the entry worker's hostname-based routing can
 							// dispatch to the correct worker/entrypoint
-							if (hasEntrypointRouting) {
+							if (hasEntrypointSubdomains) {
 								const host = request.headers.get("Host");
 								const hostname = host?.replace(/:\d+$/, "");
 								const isSubdomainRequest =

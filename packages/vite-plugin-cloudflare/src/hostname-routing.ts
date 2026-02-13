@@ -3,11 +3,11 @@ import type { Worker } from "./plugin-config";
 /**
  * Resolves entrypoint routing for a single worker based on its `exposeEntrypoints` config.
  *
- * Returns the `entrypointRouting` record (export name -> alias) to pass to the
+ * Returns the `entrypointSubdomains` record (export name -> alias) to pass to the
  * worker's miniflare options, or `undefined` if the worker doesn't opt in.
  * Miniflare handles validation, normalization, and collision detection.
  *
- * - `true`: all WorkerEntrypoint exports are exposed with export names as aliases
+ * - `true`: all exports (including default) are exposed with export names as aliases
  * - `Record<string, string | boolean>`: explicit mapping of export names to aliases
  *   (`true` uses the export name, `false` excludes the entrypoint)
  */
@@ -22,6 +22,9 @@ export function resolveEntrypointRouting(
 	const entrypoints: Record<string, string> = {};
 
 	if (worker.exposeEntrypoints === true) {
+		// The default export is always present on a worker module but
+		// exportTypes doesn't include it, so add it explicitly.
+		entrypoints["default"] = "default";
 		for (const [exportName, exportType] of Object.entries(exportTypes ?? {})) {
 			if (exportType === "WorkerEntrypoint") {
 				entrypoints[exportName] = exportName;

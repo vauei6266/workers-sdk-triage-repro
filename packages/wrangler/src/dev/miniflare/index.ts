@@ -900,7 +900,7 @@ export function buildSitesOptions({
 }
 
 /**
- * Resolves `expose_entrypoints` config into the `entrypointRouting` record
+ * Resolves `expose_entrypoints` config into the `entrypointSubdomains` record
  * (export name -> alias) that miniflare expects per worker.
  *
  * Unlike the Vite plugin, wrangler can't distinguish WorkerEntrypoint from
@@ -960,7 +960,7 @@ export async function buildMiniflareOptions(
 	const defaultPersistRoot = getDefaultPersistRoot(config.localPersistencePath);
 	const assetOptions = buildAssetOptions(config);
 
-	const entrypointRouting = resolveEntrypointRouting(
+	const entrypointSubdomains = resolveEntrypointRouting(
 		config.exposeEntrypoints,
 		entrypointNames
 	);
@@ -1005,7 +1005,7 @@ export async function buildMiniflareOptions(
 					entrypoint: name,
 					proxy: true,
 				})),
-				entrypointRouting,
+				entrypointSubdomains,
 				containerEngine: config.containerEngine,
 				zone: config.zone,
 			},
