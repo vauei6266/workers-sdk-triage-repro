@@ -1093,6 +1093,118 @@ test("Miniflare: localhostRouting full uses {entrypoint}.{worker}.localhost", as
 	await res.arrayBuffer();
 });
 
+test("Miniflare: localhostRouting routes /cdn-cgi/handler/* to correct worker", async ({
+	expect,
+}) => {
+	const mf = new Miniflare({
+		localhostRouting: "full",
+		unsafeTriggerHandlers: true,
+		workers: [
+			{
+				name: "main",
+				modules: true,
+				script: `export default { fetch() { return new Response("main"); } }`,
+			},
+			{
+				name: "worker-a",
+				modules: true,
+				entrypointRouting: {
+					default: "default",
+				},
+				script: `
+					let scheduledRan = false;
+					let emailReceived = false;
+					export default {
+						fetch() {
+							return Response.json({ worker: "a", scheduledRan, emailReceived });
+						},
+						scheduled() { scheduledRan = true; },
+						email() { emailReceived = true; }
+					}
+				`,
+			},
+			{
+				name: "worker-b",
+				modules: true,
+				entrypointRouting: {
+					default: "default",
+				},
+				script: `
+					let scheduledRan = false;
+					let emailReceived = false;
+					export default {
+						fetch() {
+							return Response.json({ worker: "b", scheduledRan, emailReceived });
+						},
+						scheduled() { scheduledRan = true; },
+						email() { emailReceived = true; }
+					}
+				`,
+			},
+		],
+	});
+	useDispose(mf);
+
+	// Both workers start clean
+	let res = await mf.dispatchFetch("http://default.worker-a.localhost/");
+	expect(await res.json()).toEqual({
+		worker: "a",
+		scheduledRan: false,
+		emailReceived: false,
+	});
+	res = await mf.dispatchFetch("http://default.worker-b.localhost/");
+	expect(await res.json()).toEqual({
+		worker: "b",
+		scheduledRan: false,
+		emailReceived: false,
+	});
+
+	// Trigger worker-a's scheduled handler
+	res = await mf.dispatchFetch(
+		"http://default.worker-a.localhost/cdn-cgi/handler/scheduled"
+	);
+	expect(res.status).toBe(200);
+	expect(await res.text()).toBe("ok");
+
+	// Only worker-a's scheduled ran
+	res = await mf.dispatchFetch("http://default.worker-a.localhost/");
+	expect(await res.json()).toEqual({
+		worker: "a",
+		scheduledRan: true,
+		emailReceived: false,
+	});
+	res = await mf.dispatchFetch("http://default.worker-b.localhost/");
+	expect(await res.json()).toEqual({
+		worker: "b",
+		scheduledRan: false,
+		emailReceived: false,
+	});
+
+	// Trigger worker-b's email handler
+	res = await mf.dispatchFetch(
+		"http://default.worker-b.localhost/cdn-cgi/handler/email?from=a@example.com&to=b@example.com",
+		{
+			method: "POST",
+			body: `From: a <a@example.com>\r\nTo: b <b@example.com>\r\nMessage-ID: <test@example.com>\r\nMIME-Version: 1.0\r\nContent-Type: text/plain\r\n\r\ntest`,
+		}
+	);
+	expect(await res.text()).toBe("Worker successfully processed email");
+
+	// Only worker-b's email handler ran
+	res = await mf.dispatchFetch("http://default.worker-a.localhost/");
+	expect(await res.json()).toEqual({
+		worker: "a",
+		scheduledRan: true,
+		emailReceived: false,
+	});
+	res = await mf.dispatchFetch("http://default.worker-b.localhost/");
+	expect(await res.json()).toEqual({
+		worker: "b",
+		scheduledRan: false,
+		emailReceived: true,
+	});
+});
+
 test("Miniflare: tail consumer called", async ({ expect }) => {
 	const mf = new Miniflare({
 		handleRuntimeStdio: () => {},
