@@ -7,9 +7,9 @@ import type { Worker } from "./plugin-config";
  * worker's miniflare options, or `undefined` if the worker doesn't opt in.
  * Miniflare handles validation, normalization, and collision detection.
  *
- * - `true`: all WorkerEntrypoint exports are exposed with lowercased export names as aliases
- * - `Record<string, string | true>`: explicit mapping of export names to aliases
- *   (`true` values become the lowercased export name)
+ * - `true`: all WorkerEntrypoint exports are exposed with export names as aliases
+ * - `Record<string, string | boolean>`: explicit mapping of export names to aliases
+ *   (`true` uses the export name, `false` excludes the entrypoint)
  */
 export function resolveEntrypointRouting(
 	worker: Worker,
@@ -31,6 +31,9 @@ export function resolveEntrypointRouting(
 		for (const [exportName, aliasOrTrue] of Object.entries(
 			worker.exposeEntrypoints
 		)) {
+			if (aliasOrTrue === false) {
+				continue;
+			}
 			entrypoints[exportName] = aliasOrTrue === true ? exportName : aliasOrTrue;
 		}
 	}

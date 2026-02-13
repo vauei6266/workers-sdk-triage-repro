@@ -26,7 +26,7 @@ export type PersistState = boolean | { path: string };
 
 interface BaseWorkerConfig {
 	viteEnvironment?: { name?: string; childEnvironments?: string[] };
-	exposeEntrypoints?: boolean | Record<string, string | true>;
+	exposeEntrypoints?: boolean | Record<string, string | boolean>;
 }
 
 interface EntryWorkerConfig extends BaseWorkerConfig {
@@ -91,7 +91,7 @@ export interface ResolvedWorkerConfig extends ResolvedAssetsOnlyConfig {
 export interface Worker {
 	config: ResolvedWorkerConfig;
 	nodeJsCompat: NodeJsCompat | undefined;
-	exposeEntrypoints?: boolean | Record<string, string | true>;
+	exposeEntrypoints?: boolean | Record<string, string | boolean>;
 }
 
 interface BaseResolvedConfig {
@@ -518,7 +518,7 @@ function createEnvironmentNameValidator() {
 
 function resolveWorker(
 	workerConfig: ResolvedWorkerConfig,
-	exposeEntrypoints?: boolean | Record<string, string | true>
+	exposeEntrypoints?: boolean | Record<string, string | boolean>
 ): Worker {
 	return {
 		config: workerConfig,

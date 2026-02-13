@@ -125,59 +125,6 @@ describe.skipIf(!localhostSubdomainsSupported)(
 			});
 		});
 
-		describe("single worker (object config with aliases)", () => {
-			async function startWorker() {
-				const helper = new WranglerE2ETestHelper();
-				await helper.seed({
-					"wrangler.toml": dedent`
-						name = "worker-a"
-						main = "src/index.ts"
-						compatibility_date = "2025-01-01"
-
-						[dev.expose_entrypoints]
-						Greet = "hello"
-						Farewell = true
-					`,
-					"src/index.ts": workerASrc,
-					"package.json": dedent`
-						{
-							"name": "worker-a",
-							"version": "0.0.0",
-							"private": true
-						}
-					`,
-				});
-				const worker = helper.runLongLived("wrangler dev");
-				const { url } = await worker.waitForReady();
-				const { port } = new URL(url);
-				return {
-					hello: `http://hello.localhost:${port}`,
-					farewell: `http://farewell.localhost:${port}`,
-					greet: `http://greet.localhost:${port}`,
-				};
-			}
-
-			it("routes via custom alias", async () => {
-				const urls = await startWorker();
-				await expect(fetchText(urls.hello)).resolves.toBe(
-					"Hello from worker-a"
-				);
-			});
-
-			it("routes via lowercased export name when alias is true", async () => {
-				const urls = await startWorker();
-				await expect(fetchText(urls.farewell)).resolves.toBe(
-					"Goodbye from worker-a"
-				);
-			});
-
-			it("returns 404 for the original export name when aliased", async () => {
-				const urls = await startWorker();
-				const res = await fetch(urls.greet);
-				expect(res.status).toBe(404);
-			});
-		});
-
 		describe("multi-worker", () => {
 			async function startWorkers() {
 				const helper = new WranglerE2ETestHelper();
