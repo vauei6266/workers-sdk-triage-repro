@@ -286,10 +286,7 @@ export const devPlugin = createPlugin("dev", (ctx) => {
 								redirect: "manual",
 							});
 						} else {
-							// When entrypoint subdomains are configured and the request
-							// hostname has a subdomain under .localhost, skip the route
-							// override so the entry worker's hostname-based routing can
-							// dispatch to the correct worker/entrypoint
+							// Let the entry worker's hostname routing handle subdomain requests
 							if (hasEntrypointSubdomains) {
 								const host = request.headers.get("Host");
 								const hostname = host?.replace(/:\d+$/, "");

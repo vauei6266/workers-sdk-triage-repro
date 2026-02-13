@@ -24,7 +24,10 @@ type Env = {
 	[CoreBindings.TEXT_CUSTOM_SERVICE]: string;
 	[CoreBindings.TEXT_UPSTREAM_URL]?: string;
 	[CoreBindings.JSON_CF_BLOB]: IncomingRequestCfProperties;
-	[CoreBindings.JSON_HOSTNAME_ROUTING]?: Record<string, Record<string, string>>;
+	[CoreBindings.JSON_ENTRYPOINT_SUBDOMAINS]?: Record<
+		string,
+		Record<string, string>
+	>;
 	[CoreBindings.JSON_ROUTES]: WorkerRoute[];
 	[CoreBindings.JSON_LOG_LEVEL]: LogLevel;
 	[CoreBindings.DATA_LIVE_RELOAD_SCRIPT]?: ArrayBuffer;
@@ -188,7 +191,6 @@ function resolveHostnameRoute(
 	}
 
 	if (entrypointAlias === undefined) {
-		// {worker}.localhost — check if default export is exposed
 		const defaultExposed = Object.values(entrypoints).includes("default");
 		if (!defaultExposed) {
 			throw new HttpError(
@@ -231,9 +233,13 @@ function getTargetService(request: Request, url: URL, env: Env) {
 
 	// 2. Hostname-based routing (opt-in)
 	// resolveHostnameRoute throws HttpError for unmatched subdomains
-	const hostnameRouting = env[CoreBindings.JSON_HOSTNAME_ROUTING];
-	if (hostnameRouting) {
-		const resolved = resolveHostnameRoute(url.hostname, hostnameRouting, env);
+	const entrypointSubdomains = env[CoreBindings.JSON_ENTRYPOINT_SUBDOMAINS];
+	if (entrypointSubdomains) {
+		const resolved = resolveHostnameRoute(
+			url.hostname,
+			entrypointSubdomains,
+			env
+		);
 		if (resolved) {
 			return resolved;
 		}

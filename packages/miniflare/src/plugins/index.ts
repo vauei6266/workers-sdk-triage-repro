@@ -178,7 +178,6 @@ export {
 } from "./core";
 export type {
 	CompiledModuleRule,
-	EntrypointRoutingConfig,
 	ModuleRuleType,
 	ModuleRule,
 	ModuleDefinition,

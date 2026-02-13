@@ -164,7 +164,17 @@ const CoreOptionsSchemaInput = z.intersection(
 		unsafeEphemeralDurableObjects: z.boolean().optional(),
 		unsafeDirectSockets: UnsafeDirectSocketSchema.array().optional(),
 
-		unsafeEntrypointSubdomains: z.record(z.string()).optional(),
+		unsafeEntrypointSubdomains: z
+			.record(
+				z
+					.string()
+					.regex(
+						/^[a-z0-9_]([a-z0-9_-]{0,61}[a-z0-9_])?$/,
+						"Aliases must contain only lowercase alphanumeric characters, hyphens, and underscores, " +
+							"must not start or end with a hyphen, and must be 1-63 characters long"
+					)
+			)
+			.optional(),
 		unsafeEvalBinding: z.string().optional(),
 		unsafeUseModuleFallbackService: z.boolean().optional(),
 
@@ -962,7 +972,7 @@ export const CORE_PLUGIN: Plugin<
 export interface GlobalServicesOptions {
 	sharedOptions: z.infer<typeof CoreSharedOptionsSchema>;
 	allWorkerRoutes: Map<string, string[]>;
-	allEntrypointRouting: Record<string, Record<string, string>> | undefined;
+	allEntrypointSubdomains: Record<string, Record<string, string>> | undefined;
 	fallbackWorkerName: string | undefined;
 	loopbackPort: number;
 	log: Log;
@@ -972,7 +982,7 @@ export interface GlobalServicesOptions {
 export function getGlobalServices({
 	sharedOptions,
 	allWorkerRoutes,
-	allEntrypointRouting,
+	allEntrypointSubdomains,
 	fallbackWorkerName,
 	loopbackPort,
 	log,
@@ -1019,14 +1029,13 @@ export function getGlobalServices({
 		// Add `proxyBindings` here, they'll be added to the `ProxyServer` `env`
 		...proxyBindings,
 	];
-	if (allEntrypointRouting) {
+	if (allEntrypointSubdomains) {
 		serviceEntryBindings.push({
-			name: CoreBindings.JSON_HOSTNAME_ROUTING,
-			json: JSON.stringify(allEntrypointRouting),
+			name: CoreBindings.JSON_ENTRYPOINT_SUBDOMAINS,
+			json: JSON.stringify(allEntrypointSubdomains),
 		});
-		// Create entrypoint-qualified service bindings for each worker/entrypoint pair
 		for (const [workerName, entrypoints] of Object.entries(
-			allEntrypointRouting
+			allEntrypointSubdomains
 		)) {
 			for (const entrypointName of Object.values(entrypoints)) {
 				serviceEntryBindings.push({

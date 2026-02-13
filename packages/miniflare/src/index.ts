@@ -43,7 +43,6 @@ import {
 	D1_PLUGIN_NAME,
 	DURABLE_OBJECTS_PLUGIN_NAME,
 	DurableObjectClassNames,
-	EntrypointRoutingConfig,
 	getDirectSocketName,
 	getGlobalServices,
 	HELLO_WORLD_PLUGIN_NAME,
@@ -735,47 +734,26 @@ async function isLocalhostSubdomainSupported(): Promise<boolean> {
 	}
 }
 
-// Hostname aliases must be valid subdomain components: lowercase alphanumeric,
-// hyphens, and underscores, 1-63 chars, not starting/ending with a hyphen.
-const ALIAS_RE = /^[a-z0-9_]([a-z0-9_-]{0,61}[a-z0-9_])?$/;
-
-function validateAlias(alias: string, context: string): void {
-	if (!ALIAS_RE.test(alias)) {
-		throw new MiniflareCoreError(
-			"ERR_VALIDATION",
-			`Invalid hostname alias "${alias}" for ${context}. ` +
-				`Aliases must contain only lowercase alphanumeric characters, hyphens, and underscores, ` +
-				`must not start or end with a hyphen, and must be 1-63 characters long.`
-		);
-	}
-}
-
-function getEntrypointRouting(
+function getEntrypointSubdomains(
 	allWorkerOpts: PluginWorkerOptions[]
-): EntrypointRoutingConfig | undefined {
-	const routing: EntrypointRoutingConfig = {};
+): Record<string, Record<string, string>> | undefined {
+	const result: Record<string, Record<string, string>> = {};
 
 	for (const workerOpts of allWorkerOpts) {
-		const entrypointSubdomains = workerOpts.core.unsafeEntrypointSubdomains;
-		if (!entrypointSubdomains) {
+		const subdomains = workerOpts.core.unsafeEntrypointSubdomains;
+		if (!subdomains) {
 			continue;
 		}
 
 		const workerName = workerOpts.core.name ?? "";
-		const normalizedWorkerName = workerName.toLowerCase();
-		validateAlias(normalizedWorkerName, `worker "${workerName}"`);
 
-		// Validate aliases, check for collisions, and invert to
-		// alias -> exportName for the entry worker's O(1) hostname lookup.
-		const entrypoints: Record<string, string> = {};
+		// Check for collisions and invert to alias -> exportName
+		// for the entry worker's O(1) hostname lookup.
+		const aliasToExport: Record<string, string> = {};
 		const seenAliases = new Map<string, string>();
 
-		for (const [exportName, rawAlias] of Object.entries(entrypointSubdomains)) {
+		for (const [exportName, rawAlias] of Object.entries(subdomains)) {
 			const alias = rawAlias.toLowerCase();
-			validateAlias(
-				alias,
-				`entrypoint "${exportName}" of worker "${workerName}"`
-			);
 
 			const existing = seenAliases.get(alias);
 			if (existing !== undefined) {
@@ -786,21 +764,21 @@ function getEntrypointRouting(
 				);
 			}
 			seenAliases.set(alias, exportName);
-			entrypoints[alias] = exportName;
+			aliasToExport[alias] = exportName;
 		}
 
-		if (Object.keys(entrypoints).length === 0) {
+		if (Object.keys(aliasToExport).length === 0) {
 			continue;
 		}
 
-		routing[normalizedWorkerName] = entrypoints;
+		result[workerName.toLowerCase()] = aliasToExport;
 	}
 
-	if (Object.keys(routing).length === 0) {
+	if (Object.keys(result).length === 0) {
 		return undefined;
 	}
 
-	return routing;
+	return result;
 }
 
 // Get the name of a binding in the `ProxyServer`'s `env`
@@ -1973,12 +1951,11 @@ export class Miniflare {
 			}
 		}
 
-		const allEntrypointRouting = getEntrypointRouting(allWorkerOpts);
+		const allEntrypointSubdomains = getEntrypointSubdomains(allWorkerOpts);
 
-		if (allEntrypointRouting && !this.#localhostSubdomainChecked) {
-			const isSupported = await isLocalhostSubdomainSupported();
+		if (allEntrypointSubdomains && !this.#localhostSubdomainChecked) {
 			this.#localhostSubdomainChecked = true;
-			if (!isSupported) {
+			if (!(await isLocalhostSubdomainSupported())) {
 				this.#log.warn(
 					"Your system's DNS resolver does not support *.localhost subdomains.\n" +
 						"Localhost entrypoint URLs like http://{entrypoint}.{worker}.localhost will work in\n" +
@@ -1990,7 +1967,7 @@ export class Miniflare {
 		const globalServices = getGlobalServices({
 			sharedOptions: sharedOpts.core,
 			allWorkerRoutes,
-			allEntrypointRouting,
+			allEntrypointSubdomains,
 			/*
 			 * - if Workers + Assets project but NOT Vitest, the fallback Worker (see
 			 *   `MINIFLARE_USER_FALLBACK`) should point to the (assets) RPC Proxy Worker
