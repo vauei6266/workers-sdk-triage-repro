@@ -756,7 +756,7 @@ function getEntrypointRouting(
 	const routing: EntrypointRoutingConfig = {};
 
 	for (const workerOpts of allWorkerOpts) {
-		const entrypointSubdomains = workerOpts.core.entrypointSubdomains;
+		const entrypointSubdomains = workerOpts.core.unsafeEntrypointSubdomains;
 		if (!entrypointSubdomains) {
 			continue;
 		}

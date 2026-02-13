@@ -164,8 +164,7 @@ const CoreOptionsSchemaInput = z.intersection(
 		unsafeEphemeralDurableObjects: z.boolean().optional(),
 		unsafeDirectSockets: UnsafeDirectSocketSchema.array().optional(),
 
-		entrypointSubdomains: z.record(z.string()).optional(),
-
+		unsafeEntrypointSubdomains: z.record(z.string()).optional(),
 		unsafeEvalBinding: z.string().optional(),
 		unsafeUseModuleFallbackService: z.boolean().optional(),
 

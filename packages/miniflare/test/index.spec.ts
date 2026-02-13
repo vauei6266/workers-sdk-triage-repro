@@ -952,7 +952,7 @@ test("Miniflare: entrypointSubdomains ROUTE_OVERRIDE takes priority", async ({
 			{
 				name: "my-api",
 				modules: true,
-				entrypointSubdomains: { default: "default" },
+				unsafeEntrypointSubdomains: { default: "default" },
 				script: `export default { fetch() { return new Response("my-api"); } }`,
 			},
 		],
@@ -980,7 +980,7 @@ test("Miniflare: entrypointSubdomains uses {entrypoint}.{worker}.localhost", asy
 			{
 				name: "api",
 				modules: true,
-				entrypointSubdomains: {
+				unsafeEntrypointSubdomains: {
 					default: "default",
 					UsersEntrypoint: "users",
 				},
@@ -995,7 +995,7 @@ test("Miniflare: entrypointSubdomains uses {entrypoint}.{worker}.localhost", asy
 			{
 				name: "admin",
 				modules: true,
-				entrypointSubdomains: {
+				unsafeEntrypointSubdomains: {
 					default: "default",
 				},
 				script: `export default { fetch() { return new Response("admin:default"); } }`,
@@ -1004,7 +1004,7 @@ test("Miniflare: entrypointSubdomains uses {entrypoint}.{worker}.localhost", asy
 				// Worker that only exposes named entrypoints (no default)
 				name: "internal",
 				modules: true,
-				entrypointSubdomains: {
+				unsafeEntrypointSubdomains: {
 					HealthEntrypoint: "health",
 				},
 				script: `
@@ -1085,7 +1085,7 @@ test("Miniflare: entrypointSubdomains routes /cdn-cgi/handler/* to correct worke
 			{
 				name: "worker-a",
 				modules: true,
-				entrypointSubdomains: {
+				unsafeEntrypointSubdomains: {
 					default: "default",
 				},
 				script: `
@@ -1103,7 +1103,7 @@ test("Miniflare: entrypointSubdomains routes /cdn-cgi/handler/* to correct worke
 			{
 				name: "worker-b",
 				modules: true,
-				entrypointSubdomains: {
+				unsafeEntrypointSubdomains: {
 					default: "default",
 				},
 				script: `
