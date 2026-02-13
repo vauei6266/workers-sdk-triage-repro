@@ -726,29 +726,12 @@ function getWorkerRoutes(
 	return allRoutes;
 }
 
-let localhostSubdomainChecked = false;
-async function checkLocalhostSubdomainSupport(log: Log): Promise<void> {
-	if (localhostSubdomainChecked) {
-		return;
-	}
-	localhostSubdomainChecked = true;
-
-	let reason: string | undefined;
+async function isLocalhostSubdomainSupported(): Promise<boolean> {
 	try {
 		const result = await dns.lookup("test.domain.localhost");
-		if (result.address !== "127.0.0.1" && result.address !== "::1") {
-			reason = `returned ${result.address} instead of loopback (127.0.0.1)`;
-		}
+		return result.address === "127.0.0.1" || result.address === "::1";
 	} catch {
-		reason = "cannot resolve them";
-	}
-
-	if (reason) {
-		log.warn(
-			`Localhost entrypoint routing relies on *.localhost subdomains, but your system's DNS resolver ${reason}.\n` +
-				"Some browsers resolve these independently and will work fine.\n" +
-				"See https://developers.cloudflare.com/workers/TODO for more details."
-		);
+		return false;
 	}
 }
 
@@ -1019,6 +1002,7 @@ export class Miniflare {
 	#proxyClient?: ProxyClient;
 
 	#structuredWorkerdLogs: boolean;
+	#localhostSubdomainChecked = false;
 
 	#cfObject?: Record<string, any> = {};
 
@@ -1994,8 +1978,16 @@ export class Miniflare {
 
 		const allEntrypointRouting = getEntrypointRouting(allWorkerOpts);
 
-		if (allEntrypointRouting) {
-			await checkLocalhostSubdomainSupport(this.#log);
+		if (allEntrypointRouting && !this.#localhostSubdomainChecked) {
+			const isSupported = await isLocalhostSubdomainSupported();
+			this.#localhostSubdomainChecked = true;
+			if (!isSupported) {
+				this.#log.warn(
+					"Your system's DNS resolver does not support *.localhost subdomains.\n" +
+						"Localhost entrypoint URLs like http://{entrypoint}.{worker}.localhost will work in\n" +
+						"some browsers (e.g. Chrome, Edge, Firefox) but might not resolve for other tools like curl."
+				);
+			}
 		}
 
 		const globalServices = getGlobalServices({
