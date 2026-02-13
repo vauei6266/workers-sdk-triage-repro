@@ -96,6 +96,8 @@ export interface ConfigBundle {
 	enableContainers: boolean;
 	// Zone to use for the CF-Worker header in outbound fetches
 	zone: string | undefined;
+	// Expose entrypoints via localhost subdomain routing
+	exposeEntrypoints: boolean | Record<string, string | boolean>;
 }
 
 export class WranglerLog extends Log {
@@ -897,6 +899,44 @@ export function buildSitesOptions({
 	}
 }
 
+/**
+ * Resolves `expose_entrypoints` config into the `entrypointRouting` record
+ * (export name -> alias) that miniflare expects per worker.
+ *
+ * Unlike the Vite plugin, wrangler can't distinguish WorkerEntrypoint from
+ * DurableObject at build time. The `true` case exposes all exports.
+ */
+function resolveEntrypointRouting(
+	exposeEntrypoints: boolean | Record<string, string | boolean>,
+	entrypointNames: string[]
+): Record<string, string> | undefined {
+	if (!exposeEntrypoints) {
+		return undefined;
+	}
+
+	const entrypoints: Record<string, string> = {};
+
+	if (exposeEntrypoints === true) {
+		for (const name of entrypointNames) {
+			entrypoints[name] = name;
+		}
+	} else {
+		for (const [exportName, aliasOrTrue] of Object.entries(exposeEntrypoints)) {
+			if (aliasOrTrue === false) {
+				continue;
+			}
+			entrypoints[exportName] =
+				aliasOrTrue === true ? exportName : String(aliasOrTrue);
+		}
+	}
+
+	if (Object.keys(entrypoints).length === 0) {
+		return undefined;
+	}
+
+	return entrypoints;
+}
+
 export type Options = Extract<MiniflareOptions, { workers: WorkerOptions[] }>;
 
 export async function buildMiniflareOptions(
@@ -920,9 +960,18 @@ export async function buildMiniflareOptions(
 	const defaultPersistRoot = getDefaultPersistRoot(config.localPersistencePath);
 	const assetOptions = buildAssetOptions(config);
 
+	const entrypointRouting = resolveEntrypointRouting(
+		config.exposeEntrypoints,
+		entrypointNames
+	);
+	// Default to "short" for single-worker; MultiworkerRuntimeController
+	// overrides this to "full" when merging options.
+	const localhostRouting = entrypointRouting ? "short" : undefined;
+
 	const options: MiniflareOptions = {
 		host: config.initialIp,
 		port: config.initialPort,
+		localhostRouting,
 		inspectorPort: config.inspect ? config.inspectorPort : undefined,
 		inspectorHost: config.inspect ? config.inspectorHost : undefined,
 		liveReload: config.liveReload,
@@ -961,6 +1010,7 @@ export async function buildMiniflareOptions(
 					entrypoint: name,
 					proxy: true,
 				})),
+				entrypointRouting,
 				containerEngine: config.containerEngine,
 				zone: config.zone,
 			},

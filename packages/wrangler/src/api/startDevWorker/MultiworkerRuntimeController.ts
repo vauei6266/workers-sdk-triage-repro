@@ -96,18 +96,26 @@ export class MultiworkerRuntimeController extends LocalRuntimeController {
 
 		const secondary = [...this.#options.values()].filter((o) => !o.primary);
 
+		const allWorkers = [
+			...primary.options.workers,
+			...secondary.flatMap((o) =>
+				o.options.workers.map((w) => {
+					// TODO: investigate why ratelimits causes everything to crash
+					delete w.ratelimits;
+					return w;
+				})
+			),
+		];
+
+		// If any worker has entrypointRouting, use "full" mode for multi-worker
+		const hasEntrypointRouting = allWorkers.some(
+			(w) => w.entrypointRouting && Object.keys(w.entrypointRouting).length > 0
+		);
+
 		return {
 			...primary.options,
-			workers: [
-				...primary.options.workers,
-				...secondary.flatMap((o) =>
-					o.options.workers.map((w) => {
-						// TODO: investigate why ratelimits causes everything to crash
-						delete w.ratelimits;
-						return w;
-					})
-				),
-			],
+			localhostRouting: hasEntrypointRouting ? "full" : undefined,
+			workers: allWorkers,
 		};
 	}
 

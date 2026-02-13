@@ -189,6 +189,13 @@ export interface StartDevWorkerInput {
 
 		/** Re-generate your worker types when your Wrangler configuration file changes */
 		generateTypes?: boolean;
+
+		/** Expose entrypoints via localhost subdomain URLs during local development.
+		 *   - true: expose all exports, using export names as hostname aliases
+		 *   - Record<string, string | true>: selectively expose specific exports
+		 *   - false or omitted: disabled (default)
+		 */
+		exposeEntrypoints?: boolean | Record<string, string | boolean>;
 	};
 	legacy?: {
 		site?: Hook<Config["site"], [Config]>;
