@@ -753,7 +753,7 @@ function validateAlias(alias: string, context: string): void {
 function getEntrypointRouting(
 	allWorkerOpts: PluginWorkerOptions[]
 ): EntrypointRoutingConfig | undefined {
-	const workers: EntrypointRoutingConfig["workers"] = {};
+	const routing: EntrypointRoutingConfig = {};
 
 	for (const workerOpts of allWorkerOpts) {
 		const entrypointSubdomains = workerOpts.core.entrypointSubdomains;
@@ -793,17 +793,14 @@ function getEntrypointRouting(
 			continue;
 		}
 
-		workers[normalizedWorkerName] = {
-			name: workerName,
-			entrypoints,
-		};
+		routing[normalizedWorkerName] = entrypoints;
 	}
 
-	if (Object.keys(workers).length === 0) {
+	if (Object.keys(routing).length === 0) {
 		return undefined;
 	}
 
-	return { workers };
+	return routing;
 }
 
 // Get the name of a binding in the `ProxyServer`'s `env`

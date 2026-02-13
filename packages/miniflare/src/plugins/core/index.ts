@@ -960,20 +960,10 @@ export const CORE_PLUGIN: Plugin<
 	},
 };
 
-export interface EntrypointRoutingConfig {
-	workers: Record<
-		string,
-		{
-			name: string;
-			entrypoints: Record<string, string>;
-		}
-	>;
-}
-
 export interface GlobalServicesOptions {
 	sharedOptions: z.infer<typeof CoreSharedOptionsSchema>;
 	allWorkerRoutes: Map<string, string[]>;
-	allEntrypointRouting: EntrypointRoutingConfig | undefined;
+	allEntrypointRouting: Record<string, Record<string, string>> | undefined;
 	fallbackWorkerName: string | undefined;
 	loopbackPort: number;
 	log: Log;
@@ -1036,12 +1026,14 @@ export function getGlobalServices({
 			json: JSON.stringify(allEntrypointRouting),
 		});
 		// Create entrypoint-qualified service bindings for each worker/entrypoint pair
-		for (const workerConfig of Object.values(allEntrypointRouting.workers)) {
-			for (const entrypointName of Object.values(workerConfig.entrypoints)) {
+		for (const [workerName, entrypoints] of Object.entries(
+			allEntrypointRouting
+		)) {
+			for (const entrypointName of Object.values(entrypoints)) {
 				serviceEntryBindings.push({
-					name: `${CoreBindings.SERVICE_USER_ENTRYPOINT_PREFIX}${workerConfig.name}:${entrypointName}`,
+					name: `${CoreBindings.SERVICE_USER_ENTRYPOINT_PREFIX}${workerName}:${entrypointName}`,
 					service: {
-						name: getUserServiceName(workerConfig.name),
+						name: getUserServiceName(workerName),
 						entrypoint:
 							entrypointName !== "default" ? entrypointName : undefined,
 					},

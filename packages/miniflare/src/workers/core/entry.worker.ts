@@ -17,16 +17,6 @@ import { STATUS_CODES } from "./http";
 import { matchRoutes, WorkerRoute } from "./routing";
 import { handleScheduled } from "./scheduled";
 
-interface EntrypointRoutingConfig {
-	workers: Record<
-		string,
-		{
-			name: string;
-			entrypoints: Record<string, string>;
-		}
-	>;
-}
-
 type Env = {
 	[CoreBindings.SERVICE_LOOPBACK]: Fetcher;
 	[CoreBindings.SERVICE_USER_FALLBACK]: Fetcher;
@@ -34,7 +24,7 @@ type Env = {
 	[CoreBindings.TEXT_CUSTOM_SERVICE]: string;
 	[CoreBindings.TEXT_UPSTREAM_URL]?: string;
 	[CoreBindings.JSON_CF_BLOB]: IncomingRequestCfProperties;
-	[CoreBindings.JSON_HOSTNAME_ROUTING]?: EntrypointRoutingConfig;
+	[CoreBindings.JSON_HOSTNAME_ROUTING]?: Record<string, Record<string, string>>;
 	[CoreBindings.JSON_ROUTES]: WorkerRoute[];
 	[CoreBindings.JSON_LOG_LEVEL]: LogLevel;
 	[CoreBindings.DATA_LIVE_RELOAD_SCRIPT]?: ArrayBuffer;
@@ -154,8 +144,6 @@ function getUserRequest(
 	return request;
 }
 
-const LOCALHOST_SUFFIX = ".localhost";
-
 /**
  * Resolves localhost entrypoint routing.
  *
@@ -170,74 +158,62 @@ const LOCALHOST_SUFFIX = ".localhost";
  */
 function resolveHostnameRoute(
 	hostname: string,
-	config: EntrypointRoutingConfig,
+	config: Record<string, Record<string, string>>,
 	env: Env
 ): Fetcher | undefined {
-	if (!hostname.endsWith(LOCALHOST_SUFFIX)) {
+	const [tld, workerName, entrypointAlias, ...rest] = hostname
+		.split(".")
+		.reverse();
+
+	if (tld !== "localhost" || workerName === undefined) {
 		return undefined;
 	}
 
-	const prefix = hostname.slice(0, -LOCALHOST_SUFFIX.length);
-	if (prefix === "") {
-		return undefined; // Plain "localhost", fall through to normal routing
-	}
-
-	const parts = prefix.split(".");
-
-	let normalizedWorkerName: string;
-	let entrypointAlias: string | undefined;
-
-	if (parts.length === 1) {
-		// {worker}.localhost — shorthand for default entrypoint
-		normalizedWorkerName = parts[0];
-	} else if (parts.length === 2) {
-		// {entrypoint}.{worker}.localhost
-		[entrypointAlias, normalizedWorkerName] = parts;
-	} else {
+	if (rest.length > 0) {
 		throw new HttpError(
 			404,
-			`Invalid subdomain: "${parts.join(".")}". ` +
+			`Invalid subdomain: "${hostname}". ` +
 				`Use {entrypoint}.{worker}.localhost or {worker}.localhost`
 		);
 	}
 
-	const workerConfig = config.workers[normalizedWorkerName];
-	if (workerConfig === undefined) {
-		const workerNames = Object.keys(config.workers);
+	const entrypoints = config[workerName];
+	if (entrypoints === undefined) {
+		const workerNames = Object.keys(config);
 		throw new HttpError(
 			404,
-			`Worker "${normalizedWorkerName}" not found. ` +
+			`Worker "${workerName}" not found. ` +
 				`Available workers: ${workerNames.join(", ")}`
 		);
 	}
 
 	if (entrypointAlias === undefined) {
 		// {worker}.localhost — check if default export is exposed
-		const defaultExposed = Object.values(workerConfig.entrypoints).includes(
-			"default"
-		);
+		const defaultExposed = Object.values(entrypoints).includes("default");
 		if (!defaultExposed) {
 			throw new HttpError(
 				404,
-				`Worker "${workerConfig.name}" does not expose its default entrypoint. ` +
-					`Available entrypoints: ${Object.keys(workerConfig.entrypoints).join(", ") || "(none)"}`
+				`Worker "${workerName}" does not expose its default entrypoint. ` +
+					`Available entrypoints: ${Object.keys(entrypoints).join(", ")}`
 			);
 		}
+
 		return env[
-			`${CoreBindings.SERVICE_USER_ENTRYPOINT_PREFIX}${workerConfig.name}:default`
+			`${CoreBindings.SERVICE_USER_ENTRYPOINT_PREFIX}${workerName}:default`
 		];
 	}
 
-	const entrypointName = workerConfig.entrypoints[entrypointAlias];
+	const entrypointName = entrypoints[entrypointAlias];
 	if (entrypointName === undefined) {
 		throw new HttpError(
 			404,
-			`Entrypoint "${entrypointAlias}" not found on worker "${workerConfig.name}". ` +
-				`Available entrypoints: ${Object.keys(workerConfig.entrypoints).join(", ") || "(none)"}`
+			`Entrypoint "${entrypointAlias}" not found on worker "${workerName}". ` +
+				`Available entrypoints: ${Object.keys(entrypoints).join(", ")}`
 		);
 	}
+
 	return env[
-		`${CoreBindings.SERVICE_USER_ENTRYPOINT_PREFIX}${workerConfig.name}:${entrypointName}`
+		`${CoreBindings.SERVICE_USER_ENTRYPOINT_PREFIX}${workerName}:${entrypointName}`
 	];
 }
 
