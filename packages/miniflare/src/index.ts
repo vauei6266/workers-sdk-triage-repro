@@ -753,8 +753,8 @@ async function checkLocalhostSubdomainSupport(log: Log): Promise<void> {
 }
 
 // Hostname aliases must be valid subdomain components: lowercase alphanumeric,
-// hyphens, and underscores, 1-63 chars, not starting/ending with hyphen or underscore.
-const ALIAS_RE = /^[a-z0-9]([a-z0-9_-]{0,61}[a-z0-9])?$/;
+// hyphens, and underscores, 1-63 chars, not starting/ending with a hyphen.
+const ALIAS_RE = /^[a-z0-9_]([a-z0-9_-]{0,61}[a-z0-9_])?$/;
 
 function validateAlias(alias: string, context: string): void {
 	if (!ALIAS_RE.test(alias)) {
@@ -762,7 +762,7 @@ function validateAlias(alias: string, context: string): void {
 			"ERR_VALIDATION",
 			`Invalid hostname alias "${alias}" for ${context}. ` +
 				`Aliases must contain only lowercase alphanumeric characters, hyphens, and underscores, ` +
-				`must not start or end with a hyphen or underscore, and must be 1-63 characters long.`
+				`must not start or end with a hyphen, and must be 1-63 characters long.`
 		);
 	}
 }

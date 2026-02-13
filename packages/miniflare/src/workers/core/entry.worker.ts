@@ -178,13 +178,11 @@ function resolveHostnameRoute(
 	config: EntrypointRoutingConfig,
 	env: Env
 ): Fetcher | undefined {
-	const host = hostname.toLowerCase();
-
-	if (!host.endsWith(LOCALHOST_SUFFIX)) {
+	if (!hostname.endsWith(LOCALHOST_SUFFIX)) {
 		return undefined;
 	}
 
-	const prefix = host.slice(0, -LOCALHOST_SUFFIX.length);
+	const prefix = hostname.slice(0, -LOCALHOST_SUFFIX.length);
 	if (prefix === "") {
 		return undefined; // Plain "localhost", fall through to normal routing
 	}
