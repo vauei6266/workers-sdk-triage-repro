@@ -6,6 +6,12 @@ export default defineConfig({
 		cloudflare({
 			configPath: "./worker-a/wrangler.jsonc",
 			exposeEntrypoints: true,
+			auxiliaryWorkers: [
+				{
+					configPath: "./worker-b/wrangler.jsonc",
+					exposeEntrypoints: true,
+				},
+			],
 			inspectorPort: false,
 			persistState: false,
 		}),

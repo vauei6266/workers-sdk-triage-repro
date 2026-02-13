@@ -267,7 +267,10 @@ export const devPlugin = createPlugin("dev", (ctx) => {
 				}
 
 				const hasEntrypointRouting =
-					!!initialOptions.miniflareOptions.localhostRouting;
+					initialOptions.miniflareOptions.workers?.some(
+						(w) =>
+							w.entrypointRouting && Object.keys(w.entrypointRouting).length > 0
+					) ?? false;
 
 				// post middleware
 				viteDevServer.middlewares.use(

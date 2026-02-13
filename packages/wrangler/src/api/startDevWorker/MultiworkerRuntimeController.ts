@@ -107,14 +107,8 @@ export class MultiworkerRuntimeController extends LocalRuntimeController {
 			),
 		];
 
-		// If any worker has entrypointRouting, use "full" mode for multi-worker
-		const hasEntrypointRouting = allWorkers.some(
-			(w) => w.entrypointRouting && Object.keys(w.entrypointRouting).length > 0
-		);
-
 		return {
 			...primary.options,
-			localhostRouting: hasEntrypointRouting ? "full" : undefined,
 			workers: allWorkers,
 		};
 	}

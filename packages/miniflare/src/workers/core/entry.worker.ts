@@ -18,7 +18,6 @@ import { matchRoutes, WorkerRoute } from "./routing";
 import { handleScheduled } from "./scheduled";
 
 interface EntrypointRoutingConfig {
-	localhostRouting: "short" | "full";
 	workers: Record<
 		string,
 		{
@@ -189,34 +188,7 @@ function resolveHostnameRoute(
 
 	const parts = prefix.split(".");
 
-	if (config.localhostRouting === "short") {
-		const workerNames = Object.keys(config.workers);
-		const workerConfig = config.workers[workerNames[0]];
-
-		if (parts.length !== 1) {
-			throw new HttpError(
-				404,
-				`Unknown entrypoint: "${parts.join(".")}". ` +
-					`Use {entrypoint}.localhost`
-			);
-		}
-
-		const alias = parts[0];
-		const entrypointName = workerConfig.entrypoints[alias];
-		if (entrypointName === undefined) {
-			throw new HttpError(
-				404,
-				`Entrypoint "${alias}" not found on worker "${workerConfig.name}". ` +
-					`Available entrypoints: ${Object.keys(workerConfig.entrypoints).join(", ") || "(none)"}`
-			);
-		}
-
-		return env[
-			`${CoreBindings.SERVICE_USER_ENTRYPOINT_PREFIX}${workerConfig.name}:${entrypointName}`
-		];
-	}
-
-	// Full mode: always requires {entrypoint}.{worker}.localhost
+	// Always requires {entrypoint}.{worker}.localhost
 	if (parts.length !== 2) {
 		throw new HttpError(
 			404,

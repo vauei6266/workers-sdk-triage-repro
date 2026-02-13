@@ -60,164 +60,105 @@ const workerBSrc = dedent/* javascript */ `
 describe.skipIf(!localhostSubdomainsSupported)(
 	"localhost entrypoint routing",
 	() => {
-		describe("single worker (expose_entrypoints = true)", () => {
-			async function startWorker() {
-				const helper = new WranglerE2ETestHelper();
-				await helper.seed({
-					"wrangler.toml": dedent`
-						name = "worker-a"
-						main = "src/index.ts"
-						compatibility_date = "2025-01-01"
+		async function startWorkers() {
+			const helper = new WranglerE2ETestHelper();
 
-						[dev]
-						expose_entrypoints = true
-					`,
-					"src/index.ts": workerASrc,
-					"package.json": dedent`
-						{
-							"name": "worker-a",
-							"version": "0.0.0",
-							"private": true
-						}
-					`,
-				});
-				const worker = helper.runLongLived("wrangler dev");
-				const { url } = await worker.waitForReady();
-				const { port } = new URL(url);
-				return {
-					default: url,
-					greet: `http://greet.localhost:${port}`,
-					farewell: `http://farewell.localhost:${port}`,
-					unknown: `http://unknown.localhost:${port}`,
-					"greet.worker-a": `http://greet.worker-a.localhost:${port}`,
-				};
-			}
+			const a = helper.tmpPath;
+			await baseSeed(a, {
+				"wrangler.toml": dedent`
+					name = "worker-a"
+					main = "src/index.ts"
+					compatibility_date = "2025-01-01"
 
-			it("routes to a named entrypoint via subdomain", async () => {
-				const urls = await startWorker();
-				await expect(fetchText(urls.greet)).resolves.toBe(
-					"Hello from worker-a"
-				);
+					[dev]
+					expose_entrypoints = true
+				`,
+				"src/index.ts": workerASrc,
+				"package.json": dedent`
+					{
+						"name": "worker-a",
+						"version": "0.0.0",
+						"private": true
+					}
+				`,
 			});
 
-			it("routes to another named entrypoint via subdomain", async () => {
-				const urls = await startWorker();
-				await expect(fetchText(urls.farewell)).resolves.toBe(
-					"Goodbye from worker-a"
-				);
+			const b = makeRoot();
+			await baseSeed(b, {
+				"wrangler.toml": dedent`
+					name = "worker-b"
+					main = "src/index.ts"
+					compatibility_date = "2025-01-01"
+
+					[dev]
+					expose_entrypoints = true
+				`,
+				"src/index.ts": workerBSrc,
+				"package.json": dedent`
+					{
+						"name": "worker-b",
+						"version": "0.0.0",
+						"private": true
+					}
+				`,
 			});
 
-			it("falls through to default export on plain localhost", async () => {
-				const urls = await startWorker();
-				await expect(fetchText(urls.default)).resolves.toBe("worker-a default");
-			});
+			const worker = helper.runLongLived(
+				`wrangler dev -c wrangler.toml -c ${b}/wrangler.toml`
+			);
+			const { url } = await worker.waitForReady();
+			const { port } = new URL(url);
+			return {
+				default: url,
+				"greet.worker-a": `http://greet.worker-a.localhost:${port}`,
+				"farewell.worker-a": `http://farewell.worker-a.localhost:${port}`,
+				"echo.worker-b": `http://echo.worker-b.localhost:${port}`,
+				greet: `http://greet.localhost:${port}`,
+				"greet.unknown": `http://greet.unknown.localhost:${port}`,
+				"nonexistent.worker-a": `http://nonexistent.worker-a.localhost:${port}`,
+			};
+		}
 
-			it("returns 404 for an unknown entrypoint", async () => {
-				const urls = await startWorker();
-				const res = await fetch(urls.unknown);
-				expect(res.status).toBe(404);
-			});
-
-			it("returns 404 for a multi-level subdomain (short mode)", async () => {
-				const urls = await startWorker();
-				const res = await fetch(urls["greet.worker-a"]);
-				expect(res.status).toBe(404);
-			});
+		it("routes to worker-a entrypoint via {entrypoint}.{worker}.localhost", async () => {
+			const urls = await startWorkers();
+			await expect(fetchText(urls["greet.worker-a"])).resolves.toBe(
+				"Hello from worker-a"
+			);
 		});
 
-		describe("multi-worker", () => {
-			async function startWorkers() {
-				const helper = new WranglerE2ETestHelper();
+		it("routes to another entrypoint on the same worker", async () => {
+			const urls = await startWorkers();
+			await expect(fetchText(urls["farewell.worker-a"])).resolves.toBe(
+				"Goodbye from worker-a"
+			);
+		});
 
-				const a = helper.tmpPath;
-				await baseSeed(a, {
-					"wrangler.toml": dedent`
-						name = "worker-a"
-						main = "src/index.ts"
-						compatibility_date = "2025-01-01"
+		it("routes to worker-b entrypoint", async () => {
+			const urls = await startWorkers();
+			await expect(fetchText(urls["echo.worker-b"])).resolves.toBe("echo:/");
+		});
 
-						[dev]
-						expose_entrypoints = true
-					`,
-					"src/index.ts": workerASrc,
-					"package.json": dedent`
-						{
-							"name": "worker-a",
-							"version": "0.0.0",
-							"private": true
-						}
-					`,
-				});
+		it("falls through to primary worker default on plain localhost", async () => {
+			const urls = await startWorkers();
+			await expect(fetchText(urls.default)).resolves.toBe("worker-a default");
+		});
 
-				const b = makeRoot();
-				await baseSeed(b, {
-					"wrangler.toml": dedent`
-						name = "worker-b"
-						main = "src/index.ts"
-						compatibility_date = "2025-01-01"
+		it("returns 404 for a single-level subdomain", async () => {
+			const urls = await startWorkers();
+			const res = await fetch(urls.greet);
+			expect(res.status).toBe(404);
+		});
 
-						[dev]
-						expose_entrypoints = true
-					`,
-					"src/index.ts": workerBSrc,
-					"package.json": dedent`
-						{
-							"name": "worker-b",
-							"version": "0.0.0",
-							"private": true
-						}
-					`,
-				});
+		it("returns 404 for an unknown worker name", async () => {
+			const urls = await startWorkers();
+			const res = await fetch(urls["greet.unknown"]);
+			expect(res.status).toBe(404);
+		});
 
-				const worker = helper.runLongLived(
-					`wrangler dev -c wrangler.toml -c ${b}/wrangler.toml`
-				);
-				const { url } = await worker.waitForReady();
-				const { port } = new URL(url);
-				return {
-					default: url,
-					"greet.worker-a": `http://greet.worker-a.localhost:${port}`,
-					"echo.worker-b": `http://echo.worker-b.localhost:${port}`,
-					greet: `http://greet.localhost:${port}`,
-					"greet.unknown": `http://greet.unknown.localhost:${port}`,
-					"nonexistent.worker-a": `http://nonexistent.worker-a.localhost:${port}`,
-				};
-			}
-
-			it("routes to worker-a entrypoint via two-level subdomain", async () => {
-				const urls = await startWorkers();
-				await expect(fetchText(urls["greet.worker-a"])).resolves.toBe(
-					"Hello from worker-a"
-				);
-			});
-
-			it("routes to worker-b entrypoint via two-level subdomain", async () => {
-				const urls = await startWorkers();
-				await expect(fetchText(urls["echo.worker-b"])).resolves.toBe("echo:/");
-			});
-
-			it("falls through to primary worker default on plain localhost", async () => {
-				const urls = await startWorkers();
-				await expect(fetchText(urls.default)).resolves.toBe("worker-a default");
-			});
-
-			it("returns 404 for a single-level subdomain (full mode)", async () => {
-				const urls = await startWorkers();
-				const res = await fetch(urls.greet);
-				expect(res.status).toBe(404);
-			});
-
-			it("returns 404 for an unknown worker name", async () => {
-				const urls = await startWorkers();
-				const res = await fetch(urls["greet.unknown"]);
-				expect(res.status).toBe(404);
-			});
-
-			it("returns 404 for an unknown entrypoint on a known worker", async () => {
-				const urls = await startWorkers();
-				const res = await fetch(urls["nonexistent.worker-a"]);
-				expect(res.status).toBe(404);
-			});
+		it("returns 404 for an unknown entrypoint on a known worker", async () => {
+			const urls = await startWorkers();
+			const res = await fetch(urls["nonexistent.worker-a"]);
+			expect(res.status).toBe(404);
 		});
 	}
 );

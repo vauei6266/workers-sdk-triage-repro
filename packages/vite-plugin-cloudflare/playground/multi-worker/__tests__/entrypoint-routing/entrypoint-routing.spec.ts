@@ -1,22 +1,25 @@
 import { describe, test } from "vitest";
 import { getJsonResponse, getResponse, isBuild } from "../../../__test-utils__";
 
-describe.skipIf(isBuild)("localhost routing (multi-worker)", () => {
+describe.skipIf(isBuild)("entrypoint routing", () => {
 	test("routes to worker-a entrypoint via {entrypoint}.{worker}.localhost", async ({
 		expect,
 	}) => {
 		const result = await getJsonResponse("/", "greet.worker-a.localhost");
-		expect(result).toEqual({ greet: "Hello from worker-a" });
+		expect(result).toEqual({ name: "Hello from Named entrypoint" });
 	});
 
 	test("routes to worker-b entrypoint", async ({ expect }) => {
-		const result = await getJsonResponse("/", "echo.worker-b.localhost");
-		expect(result).toEqual({ echo: "/" });
+		const result = await getJsonResponse(
+			"/",
+			"namedentrypoint.worker-b.localhost"
+		);
+		expect(result).toEqual({ name: "Worker B: Named entrypoint" });
 	});
 
 	test("plain localhost falls through to default", async ({ expect }) => {
 		const result = await getJsonResponse("/");
-		expect(result).toEqual({ worker: "worker-a default" });
+		expect(result).toEqual({ name: "Worker A" });
 	});
 
 	test("returns 404 for single-level subdomain", async ({ expect }) => {

@@ -428,19 +428,11 @@ export async function getDevMiniflareOptions(
 		(options) => options.externalWorkers
 	);
 
-	const hasEntrypointRouting = userWorkers.some((w) => w.entrypointRouting);
-	const localhostRouting = hasEntrypointRouting
-		? userWorkers.length === 1
-			? "short"
-			: "full"
-		: undefined;
-
 	const logger = new ViteMiniflareLogger(resolvedViteConfig);
 
 	return {
 		miniflareOptions: {
 			log: logger,
-			localhostRouting,
 			unsafeProxySharedSecret: ctx.proxySharedSecret,
 			logRequests: false,
 			inspectorPort:

@@ -939,63 +939,10 @@ test("Miniflare: service binding to named entrypoint that implements a method re
 	expect(rpcTarget.id).toEqual("test-id");
 });
 
-test("Miniflare: localhostRouting short uses {entrypoint}.localhost", async ({
-	expect,
-}) => {
-	const mf = new Miniflare({
-		localhostRouting: "short",
-		workers: [
-			{
-				name: "my-api",
-				modules: true,
-				entrypointRouting: {
-					GreetEntrypoint: "greet",
-					MathEntrypoint: "math",
-				},
-				script: `
-					import { WorkerEntrypoint } from "cloudflare:workers";
-					export class GreetEntrypoint extends WorkerEntrypoint {
-						fetch(request) { return new Response("hello from greet"); }
-					}
-					export class MathEntrypoint extends WorkerEntrypoint {
-						fetch(request) { return new Response("hello from math"); }
-					}
-					export default {
-						fetch() { return new Response("my-api:default"); }
-					}
-				`,
-			},
-		],
-	});
-	useDispose(mf);
-
-	// {entrypoint}.localhost routes to named entrypoint
-	let res = await mf.dispatchFetch("http://greet.localhost/");
-	expect(await res.text()).toBe("hello from greet");
-
-	res = await mf.dispatchFetch("http://math.localhost/");
-	expect(await res.text()).toBe("hello from math");
-
-	// Plain localhost falls through to default entrypoint
-	res = await mf.dispatchFetch("http://localhost/");
-	expect(await res.text()).toBe("my-api:default");
-
-	// Unknown entrypoint returns 404
-	res = await mf.dispatchFetch("http://unknown.localhost/");
-	expect(res.status).toBe(404);
-	await res.arrayBuffer();
-
-	// Multi-level subdomains are not supported in short mode
-	res = await mf.dispatchFetch("http://greet.my-api.localhost/");
-	expect(res.status).toBe(404);
-	await res.arrayBuffer();
-});
-
 test("Miniflare: entrypointRouting ROUTE_OVERRIDE takes priority", async ({
 	expect,
 }) => {
 	const mf = new Miniflare({
-		localhostRouting: "full",
 		workers: [
 			{
 				name: "main",
@@ -1019,11 +966,10 @@ test("Miniflare: entrypointRouting ROUTE_OVERRIDE takes priority", async ({
 	expect(await res.text()).toBe("main");
 });
 
-test("Miniflare: localhostRouting full uses {entrypoint}.{worker}.localhost", async ({
+test("Miniflare: entrypointRouting uses {entrypoint}.{worker}.localhost", async ({
 	expect,
 }) => {
 	const mf = new Miniflare({
-		localhostRouting: "full",
 		workers: [
 			{
 				name: "main",
@@ -1093,11 +1039,10 @@ test("Miniflare: localhostRouting full uses {entrypoint}.{worker}.localhost", as
 	await res.arrayBuffer();
 });
 
-test("Miniflare: localhostRouting routes /cdn-cgi/handler/* to correct worker", async ({
+test("Miniflare: entrypointRouting routes /cdn-cgi/handler/* to correct worker", async ({
 	expect,
 }) => {
 	const mf = new Miniflare({
-		localhostRouting: "full",
 		unsafeTriggerHandlers: true,
 		workers: [
 			{

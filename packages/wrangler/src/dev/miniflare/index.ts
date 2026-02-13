@@ -964,14 +964,9 @@ export async function buildMiniflareOptions(
 		config.exposeEntrypoints,
 		entrypointNames
 	);
-	// Default to "short" for single-worker; MultiworkerRuntimeController
-	// overrides this to "full" when merging options.
-	const localhostRouting = entrypointRouting ? "short" : undefined;
-
 	const options: MiniflareOptions = {
 		host: config.initialIp,
 		port: config.initialPort,
-		localhostRouting,
 		inspectorPort: config.inspect ? config.inspectorPort : undefined,
 		inspectorHost: config.inspect ? config.inspectorHost : undefined,
 		liveReload: config.liveReload,
