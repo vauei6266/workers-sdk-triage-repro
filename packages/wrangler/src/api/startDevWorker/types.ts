@@ -192,7 +192,8 @@ export interface StartDevWorkerInput {
 
 		/** Expose entrypoints via localhost subdomain URLs during local development.
 		 *   - true: expose all exports, using export names as hostname aliases
-		 *   - Record<string, string | true>: selectively expose specific exports
+		 *   - Record<string, string | boolean>: selectively expose specific exports
+		 *     (true uses export name as alias, string sets a custom alias, false excludes)
 		 *   - false or omitted: disabled (default)
 		 */
 		exposeEntrypoints?: boolean | Record<string, string | boolean>;

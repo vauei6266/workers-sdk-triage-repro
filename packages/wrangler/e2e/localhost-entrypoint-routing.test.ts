@@ -1,10 +1,10 @@
 import { lookup } from "node:dns/promises";
 import dedent from "ts-dedent";
 import { fetch } from "undici";
-import { describe, expect, it } from "vitest";
-import { WranglerE2ETestHelper } from "./helpers/e2e-wrangler-test";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { fetchText } from "./helpers/fetch-text";
 import { seed as baseSeed, makeRoot } from "./helpers/setup";
+import { WranglerLongLivedCommand } from "./helpers/wrangler";
 
 // Check if *.localhost subdomains resolve on this system.
 // Some environments (Windows, older macOS, Alpine) don't support this.
@@ -60,10 +60,11 @@ const workerBSrc = dedent/* javascript */ `
 describe.skipIf(!localhostSubdomainsSupported)(
 	"localhost entrypoint routing",
 	() => {
-		async function startWorkers() {
-			const helper = new WranglerE2ETestHelper();
+		let urls: Record<string, string>;
+		let wrangler: WranglerLongLivedCommand;
 
-			const a = helper.tmpPath;
+		beforeAll(async () => {
+			const a = makeRoot();
 			await baseSeed(a, {
 				"wrangler.toml": dedent`
 					name = "worker-a"
@@ -103,12 +104,13 @@ describe.skipIf(!localhostSubdomainsSupported)(
 				`,
 			});
 
-			const worker = helper.runLongLived(
-				`wrangler dev -c wrangler.toml -c ${b}/wrangler.toml`
+			wrangler = new WranglerLongLivedCommand(
+				`wrangler dev -c wrangler.toml -c ${b}/wrangler.toml`,
+				{ cwd: a }
 			);
-			const { url } = await worker.waitForReady();
+			const { url } = await wrangler.waitForReady();
 			const { port } = new URL(url);
-			return {
+			urls = {
 				default: url,
 				"greet.worker-a": `http://greet.worker-a.localhost:${port}`,
 				"farewell.worker-a": `http://farewell.worker-a.localhost:${port}`,
@@ -119,60 +121,55 @@ describe.skipIf(!localhostSubdomainsSupported)(
 				"greet.unknown": `http://greet.unknown.localhost:${port}`,
 				"nonexistent.worker-a": `http://nonexistent.worker-a.localhost:${port}`,
 			};
-		}
+		});
+
+		afterAll(async () => {
+			await wrangler?.stop();
+		});
 
 		it("routes to worker-a entrypoint via {entrypoint}.{worker}.localhost", async () => {
-			const urls = await startWorkers();
 			await expect(fetchText(urls["greet.worker-a"])).resolves.toBe(
 				"Hello from worker-a"
 			);
 		});
 
 		it("routes to another entrypoint on the same worker", async () => {
-			const urls = await startWorkers();
 			await expect(fetchText(urls["farewell.worker-a"])).resolves.toBe(
 				"Goodbye from worker-a"
 			);
 		});
 
 		it("routes to worker-b entrypoint", async () => {
-			const urls = await startWorkers();
 			await expect(fetchText(urls["echo.worker-b"])).resolves.toBe("echo:/");
 		});
 
 		it("routes to worker-a default via {worker}.localhost", async () => {
-			const urls = await startWorkers();
 			await expect(fetchText(urls["worker-a"])).resolves.toBe(
 				"worker-a default"
 			);
 		});
 
 		it("routes to worker-b default via {worker}.localhost", async () => {
-			const urls = await startWorkers();
 			await expect(fetchText(urls["worker-b"])).resolves.toBe(
 				"worker-b default"
 			);
 		});
 
 		it("falls through to primary worker default on plain localhost", async () => {
-			const urls = await startWorkers();
 			await expect(fetchText(urls.default)).resolves.toBe("worker-a default");
 		});
 
 		it("returns 404 for unknown worker via single-level subdomain", async () => {
-			const urls = await startWorkers();
 			const res = await fetch(urls.greet);
 			expect(res.status).toBe(404);
 		});
 
 		it("returns 404 for an unknown worker name", async () => {
-			const urls = await startWorkers();
 			const res = await fetch(urls["greet.unknown"]);
 			expect(res.status).toBe(404);
 		});
 
 		it("returns 404 for an unknown entrypoint on a known worker", async () => {
-			const urls = await startWorkers();
 			const res = await fetch(urls["nonexistent.worker-a"]);
 			expect(res.status).toBe(404);
 		});

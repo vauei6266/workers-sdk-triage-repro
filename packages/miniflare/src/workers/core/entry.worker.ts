@@ -159,13 +159,9 @@ const LOCALHOST_SUFFIX = ".localhost";
 /**
  * Resolves localhost entrypoint routing.
  *
- * Short mode ({entrypoint}.localhost):
- *   - One subdomain level: look up as entrypoint alias
- *   - Two+ subdomain levels: error
- *
- * Full mode ({entrypoint}.{worker}.localhost):
- *   - Two subdomain levels: look up as entrypoint.worker
- *   - Other subdomain levels: error
+ * - {worker}.localhost: routes to the worker's default entrypoint (if exposed)
+ * - {entrypoint}.{worker}.localhost: routes to a specific entrypoint
+ * - 3+ subdomain levels: returns 404 error
  *
  * Only entrypoints explicitly listed in the routing config are accessible.
  *

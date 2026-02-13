@@ -952,15 +952,16 @@ test("Miniflare: entrypointSubdomains ROUTE_OVERRIDE takes priority", async ({
 			{
 				name: "my-api",
 				modules: true,
-				entrypointSubdomains: {},
+				entrypointSubdomains: { default: "default" },
 				script: `export default { fetch() { return new Response("my-api"); } }`,
 			},
 		],
 	});
 	useDispose(mf);
 
-	// ROUTE_OVERRIDE header should take priority over entrypoint routing
-	const res = await mf.dispatchFetch("http://my-api.localhost/", {
+	// ROUTE_OVERRIDE header should take priority over entrypoint routing.
+	// Without the override, default.my-api.localhost would route to my-api.
+	const res = await mf.dispatchFetch("http://default.my-api.localhost/", {
 		headers: { "MF-Route-Override": "main" },
 	});
 	expect(await res.text()).toBe("main");

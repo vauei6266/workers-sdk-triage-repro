@@ -930,10 +930,6 @@ function resolveEntrypointRouting(
 		}
 	}
 
-	if (Object.keys(entrypoints).length === 0) {
-		return undefined;
-	}
-
 	return entrypoints;
 }
 

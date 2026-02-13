@@ -806,6 +806,10 @@ function getEntrypointRouting(
 			entrypoints[alias] = exportName;
 		}
 
+		if (Object.keys(entrypoints).length === 0) {
+			continue;
+		}
+
 		workers[normalizedWorkerName] = {
 			name: workerName,
 			entrypoints,
