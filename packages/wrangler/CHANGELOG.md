@@ -1,5 +1,69 @@
 # wrangler
 
+## 4.66.0
+
+### Minor Changes
+
+- [#12543](https://github.com/cloudflare/workers-sdk/pull/12543) [`5a868a0`](https://github.com/cloudflare/workers-sdk/commit/5a868a0c0b305548e4ad60a50f20ab4cd8900741) Thanks [@G4brym](https://github.com/G4brym)! - Add support for AI Search RPC method
+
+### Patch Changes
+
+- [#12552](https://github.com/cloudflare/workers-sdk/pull/12552) [`c58e81b`](https://github.com/cloudflare/workers-sdk/commit/c58e81b85e1ff1285ac024508739c997ec04984e) Thanks [@dependabot](https://github.com/apps/dependabot)! - Update dependencies of "miniflare", "wrangler"
+
+  The following dependency versions have been updated:
+
+  | Dependency | From         | To           |
+  | ---------- | ------------ | ------------ |
+  | workerd    | 1.20260212.0 | 1.20260213.0 |
+
+- [#12568](https://github.com/cloudflare/workers-sdk/pull/12568) [`33a9a8f`](https://github.com/cloudflare/workers-sdk/commit/33a9a8f97e61c45507865eb8c5c9cace7ab27e64) Thanks [@dependabot](https://github.com/apps/dependabot)! - Update dependencies of "miniflare", "wrangler"
+
+  The following dependency versions have been updated:
+
+  | Dependency | From         | To           |
+  | ---------- | ------------ | ------------ |
+  | workerd    | 1.20260213.0 | 1.20260214.0 |
+
+- [#12556](https://github.com/cloudflare/workers-sdk/pull/12556) [`7d2355e`](https://github.com/cloudflare/workers-sdk/commit/7d2355ea146365391f3cd8b0e5a80057e6013151) Thanks [@ascorbic](https://github.com/ascorbic)! - Fix port availability check probing the wrong host when host changes
+
+  `memoizeGetPort` correctly invalidated its cached port when called with a different host, but then still probed the original host for port availability. This could return a port that was free on the original host but already in use on the requested one, leading to bind failures at startup.
+
+- [#12562](https://github.com/cloudflare/workers-sdk/pull/12562) [`7ea69af`](https://github.com/cloudflare/workers-sdk/commit/7ea69af67f0427c621eb8fa0b31ebaa4c6537870) Thanks [@MattieTK](https://github.com/MattieTK)! - Support function-based Vite configs in autoconfig setup
+
+  `wrangler setup` and `wrangler deploy --x-autoconfig` can now automatically add the Cloudflare Vite plugin to projects that use function-based `defineConfig()` patterns. Previously, autoconfig would fail with "Cannot modify Vite config: expected an object literal but found ArrowFunctionExpression" for configs like:
+
+  ```ts
+  export default defineConfig(({ isSsrBuild }) => ({
+  	plugins: [reactRouter(), tsconfigPaths()],
+  }));
+  ```
+
+  This pattern is used by several official framework templates, including React Router's `node-postgres` and `node-custom-server` templates. The following `defineConfig()` patterns are now supported:
+
+  - `defineConfig({ ... })` (object literal, already worked)
+  - `defineConfig(() => ({ ... }))` (arrow function with expression body)
+  - `defineConfig(({ isSsrBuild }) => ({ ... }))` (arrow function with destructured params)
+  - `defineConfig(() => { return { ... }; })` (arrow function with block body)
+  - `defineConfig(function() { return { ... }; })` (function expression)
+
+- [#12548](https://github.com/cloudflare/workers-sdk/pull/12548) [`5cc7158`](https://github.com/cloudflare/workers-sdk/commit/5cc7158b39a247e3c33f158327a1cee99dd5e719) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - Fix `.assetsignore` formatting when autoconfig creates a new file
+
+  Previously, when `wrangler setup` or `wrangler deploy --x-autoconfig` created a new `.assetsignore` file via autoconfig, it would add unnecessary leading empty lines before the wrangler-specific entries. Empty separator lines should only be added when appending to an existing `.assetsignore` file. This fix ensures newly created `.assetsignore` files start cleanly without leading blank lines.
+
+- [#12556](https://github.com/cloudflare/workers-sdk/pull/12556) [`7d2355e`](https://github.com/cloudflare/workers-sdk/commit/7d2355ea146365391f3cd8b0e5a80057e6013151) Thanks [@ascorbic](https://github.com/ascorbic)! - Improve error message when port binding is blocked by a sandbox or security policy
+
+  When running `wrangler dev` inside a restricted environment (such as an AI coding agent sandbox or locked-down container), the port availability check would fail with a raw `EPERM` error. This now provides a clear message explaining that a sandbox or security policy is blocking network access, rather than the generic permission error that previously pointed at the file system.
+
+- [#12548](https://github.com/cloudflare/workers-sdk/pull/12548) [`5cc7158`](https://github.com/cloudflare/workers-sdk/commit/5cc7158b39a247e3c33f158327a1cee99dd5e719) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - Add trailing newline to generated `package.json` and `wrangler.jsonc` files
+
+- [#12548](https://github.com/cloudflare/workers-sdk/pull/12548) [`5cc7158`](https://github.com/cloudflare/workers-sdk/commit/5cc7158b39a247e3c33f158327a1cee99dd5e719) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - Fix `.gitignore` formatting when autoconfig creates a new file
+
+  Previously, when `wrangler setup` or `wrangler deploy` created a new `.gitignore` file via autoconfig, it would add unnecessary leading empty lines before the wrangler-specific entries. Empty separator lines should only be added when appending to an existing `.gitignore` file. This fix ensures newly created `.gitignore` files start cleanly without leading blank lines.
+
+- Updated dependencies [[`5a868a0`](https://github.com/cloudflare/workers-sdk/commit/5a868a0c0b305548e4ad60a50f20ab4cd8900741), [`c58e81b`](https://github.com/cloudflare/workers-sdk/commit/c58e81b85e1ff1285ac024508739c997ec04984e), [`33a9a8f`](https://github.com/cloudflare/workers-sdk/commit/33a9a8f97e61c45507865eb8c5c9cace7ab27e64), [`7f18183`](https://github.com/cloudflare/workers-sdk/commit/7f181839513a1cac441e0956a59130ba1f4ef6d4), [`39491f9`](https://github.com/cloudflare/workers-sdk/commit/39491f9d92153f679fd2f9e81a5d58122946a0af), [`43c462a`](https://github.com/cloudflare/workers-sdk/commit/43c462af9684980b8332a8e3a31a9bd9f08777f5)]:
+  - miniflare@4.20260214.0
+  - @cloudflare/unenv-preset@2.13.0
+
 ## 4.65.0
 
 ### Minor Changes

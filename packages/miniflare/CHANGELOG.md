@@ -1,5 +1,33 @@
 # miniflare
 
+## 4.20260214.0
+
+### Minor Changes
+
+- [#12543](https://github.com/cloudflare/workers-sdk/pull/12543) [`5a868a0`](https://github.com/cloudflare/workers-sdk/commit/5a868a0c0b305548e4ad60a50f20ab4cd8900741) Thanks [@G4brym](https://github.com/G4brym)! - Add support for AI Search RPC method
+
+- [#12546](https://github.com/cloudflare/workers-sdk/pull/12546) [`43c462a`](https://github.com/cloudflare/workers-sdk/commit/43c462af9684980b8332a8e3a31a9bd9f08777f5) Thanks [@emily-shen](https://github.com/emily-shen)! - Local explorer: add endpoints to list DO namespaces and objects
+
+  This is part of an experimental, WIP feature.
+
+### Patch Changes
+
+- [#12552](https://github.com/cloudflare/workers-sdk/pull/12552) [`c58e81b`](https://github.com/cloudflare/workers-sdk/commit/c58e81b85e1ff1285ac024508739c997ec04984e) Thanks [@dependabot](https://github.com/apps/dependabot)! - Update dependencies of "miniflare", "wrangler"
+
+  The following dependency versions have been updated:
+
+  | Dependency | From         | To           |
+  | ---------- | ------------ | ------------ |
+  | workerd    | 1.20260212.0 | 1.20260213.0 |
+
+- [#12568](https://github.com/cloudflare/workers-sdk/pull/12568) [`33a9a8f`](https://github.com/cloudflare/workers-sdk/commit/33a9a8f97e61c45507865eb8c5c9cace7ab27e64) Thanks [@dependabot](https://github.com/apps/dependabot)! - Update dependencies of "miniflare", "wrangler"
+
+  The following dependency versions have been updated:
+
+  | Dependency | From         | To           |
+  | ---------- | ------------ | ------------ |
+  | workerd    | 1.20260213.0 | 1.20260214.0 |
+
 ## 4.20260212.0
 
 ### Minor Changes
