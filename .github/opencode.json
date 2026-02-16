@@ -5,7 +5,7 @@
 	"provider": {
 		"cloudflare-ai-gateway": {
 			"models": {
-				"anthropic/claude-sonnet-4-5": {}
+				"google/gemini-2.5-pro": {}
 			}
 		}
 	},
