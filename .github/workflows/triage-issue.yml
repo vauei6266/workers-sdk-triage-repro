@@ -83,10 +83,15 @@ jobs:
           - data/${ISSUE}/summary.md (single tab-separated summary line)
           "
 
-      - name: Validate generated files (no-dashboard mode)
+      - name: Upload report to dashboard
+        env:
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF1_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF1_ACCESS_CLIENT_SECRET }}
+          DASHBOARD_URL: ${{ secrets.REPORTS_DASHBOARD_URL }}
         run: |
           ISSUE=${{ steps.issue.outputs.number }}
 
+          # Check files were created
           if [ ! -f "data/${ISSUE}/report.md" ]; then
             echo "::error::report.md was not generated"
             exit 1
@@ -96,12 +101,51 @@ jobs:
             exit 1
           fi
 
-          echo "Generated artifacts for issue #${ISSUE}:"
-          ls -la "data/${ISSUE}"
+          # Parse the tab-separated summary.md into variables
+          SUMMARY=$(cat "data/${ISSUE}/summary.md")
+          TITLE=$(echo "$SUMMARY" | cut -f2)
+          RECOMMENDATION=$(echo "$SUMMARY" | cut -f3)
+          DIFFICULTY=$(echo "$SUMMARY" | cut -f4)
+          REASONING=$(echo "$SUMMARY" | cut -f5)
+          SUGGESTED_ACTION=$(echo "$SUMMARY" | cut -f6)
+          SUGGESTED_COMMENT=$(echo "$SUMMARY" | cut -f7)
+          REPORT=$(cat "data/${ISSUE}/report.md")
 
-      - name: Upload triage artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: triage-${{ steps.issue.outputs.number }}
-          path: data/${{ steps.issue.outputs.number }}/
-          if-no-files-found: error
+          # Build JSON payload
+          PAYLOAD=$(jq -n \
+            --arg title "$TITLE" \
+            --arg githubUrl "https://github.com/${{ github.repository }}/issues/${ISSUE}" \
+            --arg recommendation "$RECOMMENDATION" \
+            --arg difficulty "$DIFFICULTY" \
+            --arg reasoning "$REASONING" \
+            --arg suggestedAction "$SUGGESTED_ACTION" \
+            --arg suggestedComment "$SUGGESTED_COMMENT" \
+            --arg reportMarkdown "$REPORT" \
+            '{
+              title: $title,
+              githubUrl: $githubUrl,
+              recommendation: $recommendation,
+              difficulty: $difficulty,
+              reasoning: $reasoning,
+              suggestedAction: $suggestedAction,
+              suggestedComment: $suggestedComment,
+              reportMarkdown: $reportMarkdown
+            }')
+
+          # POST to dashboard API
+          HTTP_STATUS=$(curl -s -o response.json -w "%{http_code}" \
+            -X POST "${DASHBOARD_URL}/api/report/${ISSUE}" \
+            -H "Content-Type: application/json" \
+            -H "CF-Access-Client-Id: ${CF_ACCESS_CLIENT_ID}" \
+            -H "CF-Access-Client-Secret: ${CF_ACCESS_CLIENT_SECRET}" \
+            -d "$PAYLOAD")
+
+          echo "Dashboard API response: HTTP ${HTTP_STATUS}"
+          cat response.json
+
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "::error::Failed to upload report (HTTP ${HTTP_STATUS})"
+            exit 1
+          fi
+
+          echo "Report uploaded for issue #${ISSUE}"
